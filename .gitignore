@@ -1,0 +1,29 @@
+# Environment variables (contains API keys)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Output files
+output_*.json
+test_mock.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Test scripts
+test_*.py
