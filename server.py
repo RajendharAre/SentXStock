@@ -155,6 +155,136 @@ def clear_chat():
     return jsonify({"success": True})
 
 
+# ─── Backtesting ──────────────────────────────────────────────
+
+_bt_job_lock = threading.Lock()
+_bt_job = {
+    "status":  "idle",   # idle | running | complete | error
+    "progress": "",
+    "error":    None,
+    "run_id":   None,
+}
+
+
+def _run_backtest_bg(params: dict):
+    """Background thread for running backtest (same async pattern as analysis)."""
+    global _bt_job
+    try:
+        from backtest.runner import run_backtest
+
+        with _bt_job_lock:
+            _bt_job["progress"] = "Loading price data…"
+
+        result = run_backtest(
+            tickers            = params.get("tickers") or None,
+            sector             = params.get("sector") or None,
+            start              = params.get("start",  "2022-01-01"),
+            end                = params.get("end",    "2024-01-01"),
+            strategy_variant   = params.get("strategy_variant",  "threshold"),
+            risk_level         = params.get("risk_level",        "Medium"),
+            sentiment_mode     = params.get("sentiment_mode",    "price_momentum"),
+            buy_threshold      = float(params.get("buy_threshold",  0.10)),
+            sell_threshold     = float(params.get("sell_threshold", -0.10)),
+            max_position_pct   = float(params.get("max_position_pct", 0.05)),
+            initial_capital    = float(params.get("initial_capital",  100_000)),
+            benchmark_ticker   = params.get("benchmark_ticker", "SPY"),
+            slippage_bps       = float(params.get("slippage_bps", 5.0)),
+            allow_shorts       = bool(params.get("allow_shorts", False)),
+            max_open_positions = int(params.get("max_open_positions", 20)),
+            save_results       = True,
+            run_id             = params.get("run_id") or None,
+            verbose            = False,
+        )
+
+        with _bt_job_lock:
+            _bt_job["status"]   = "complete"
+            _bt_job["progress"] = "Backtest complete"
+            _bt_job["run_id"]   = result.to_dict().get("_run_id", "")
+            _bt_job["result"]   = result.to_dict()
+            _bt_job["error"]    = None
+
+    except Exception as e:
+        import traceback
+        with _bt_job_lock:
+            _bt_job["status"]   = "error"
+            _bt_job["progress"] = ""
+            _bt_job["error"]    = str(e)
+            _bt_job["run_id"]   = None
+
+
+@app.route("/api/backtest/run", methods=["POST"])
+def start_backtest():
+    """Start a backtest in a background thread (non-blocking)."""
+    global _bt_job
+    params = request.get_json() or {}
+
+    with _bt_job_lock:
+        if _bt_job["status"] == "running":
+            return jsonify({"status": "running", "message": "Backtest already in progress"})
+        _bt_job["status"]   = "running"
+        _bt_job["progress"] = "Queued…"
+        _bt_job["error"]    = None
+        _bt_job["run_id"]   = None
+        _bt_job.pop("result", None)
+
+    t = threading.Thread(target=_run_backtest_bg, args=(params,), daemon=True)
+    t.start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/backtest/status", methods=["GET"])
+def backtest_status():
+    """Poll for backtest completion."""
+    with _bt_job_lock:
+        snapshot = {k: v for k, v in _bt_job.items() if k != "result"}
+    return jsonify(snapshot)
+
+
+@app.route("/api/backtest/latest", methods=["GET"])
+def backtest_latest_result():
+    """Return the full result of the most-recently-completed backtest."""
+    with _bt_job_lock:
+        r = _bt_job.get("result")
+    if not r:
+        return jsonify({"error": "No completed backtest in memory. Call /api/backtest/result/<run_id> instead."}), 404
+    return jsonify(r)
+
+
+@app.route("/api/backtest/results", methods=["GET"])
+def list_backtest_results():
+    """List all saved backtest runs."""
+    from backtest.report import list_runs
+    return jsonify(list_runs())
+
+
+@app.route("/api/backtest/result/<run_id>", methods=["GET"])
+def get_backtest_result(run_id: str):
+    """Load a saved backtest result by run_id."""
+    from backtest.report import load_result
+    try:
+        return jsonify(load_result(run_id))
+    except FileNotFoundError:
+        return jsonify({"error": f"run_id '{run_id}' not found"}), 404
+
+
+@app.route("/api/backtest/compare", methods=["POST"])
+def compare_backtest_results():
+    """Compare multiple saved runs side by side."""
+    from backtest.report import compare_runs
+    run_ids = (request.get_json() or {}).get("run_ids", [])
+    if not run_ids:
+        return jsonify({"error": "provide run_ids list"}), 400
+    return jsonify(compare_runs(run_ids))
+
+
+@app.route("/api/backtest/result/<run_id>", methods=["DELETE"])
+def delete_backtest_result(run_id: str):
+    """Delete a saved run."""
+    from backtest.report import delete_result
+    deleted = delete_result(run_id)
+    return jsonify({"deleted": deleted})
+
+
 # ─── Run Server ───────────────────────────────────────────────
 
 if __name__ == "__main__":

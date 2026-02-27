@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Settings, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Settings, Sun, Moon, FlaskConical } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar() {
@@ -9,6 +9,7 @@ export default function Navbar() {
   const links = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/chat', label: 'Chat', icon: MessageSquare },
+    { to: '/backtest', label: 'Backtest', icon: FlaskConical },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 

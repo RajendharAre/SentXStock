@@ -29,5 +29,12 @@ export const getDashboard = () => api.get('/dashboard');
 export const sendChat = (question) => api.post('/chat', { question });
 export const getChatHistory = () => api.get('/chat/history');
 export const clearChat = () => api.post('/chat/clear');
-
+// ─── Backtesting ──────────────────────────────────────────────────────────────
+export const startBacktest          = (params) => api.post('/backtest/run', params);
+export const backtestStatus         = ()        => api.get('/backtest/status');
+export const backtestLatestResult   = ()        => api.get('/backtest/latest');
+export const listBacktestResults    = ()        => api.get('/backtest/results');
+export const loadBacktestResult     = (runId)   => api.get(`/backtest/result/${runId}`);
+export const compareBacktestResults = (runIds)  => api.post('/backtest/compare', { run_ids: runIds });
+export const deleteBacktestResult   = (runId)   => api.delete(`/backtest/result/${runId}`);
 export default api;

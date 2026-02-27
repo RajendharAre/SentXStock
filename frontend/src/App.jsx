@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import Backtest from './pages/Backtest';
 
 export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -38,6 +39,7 @@ export default function App() {
               />
               <Route path="/chat" element={<Chat />} />
               <Route path="/settings" element={<Settings onSaved={handleSettingsSaved} />} />
+              <Route path="/backtest" element={<Backtest />} />
             </Routes>
           </main>
         </div>

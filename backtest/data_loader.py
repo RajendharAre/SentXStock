@@ -1,0 +1,331 @@
+"""
+Data Loader
+===========
+Fetches historical OHLCV data and derives synthetic sentiment signals.
+
+Two sentiment modes
+-------------------
+1. **price_momentum** (default, no API required)
+   Derives a sentiment score from price-based technical signals:
+     RSI, rate-of-change, moving-average crossover, volume anomaly.
+   Designed to proxy news sentiment in historical periods where
+   real news archives are unavailable or too expensive.
+
+2. **cached_news**  (optional)
+   If JSON files exist under `backtest/cache/news/<TICKER>/<DATE>.json`,
+   those are fed through the FinBERT scorer for real historical sentiment.
+
+All data is cached to `backtest/cache/prices/<TICKER>_<start>_<end>.parquet`
+so repeated back-tests are fast.
+
+Scalability
+-----------
+- 500 tickers are downloaded in batches (configurable `BATCH_SIZE`).
+- Uses yfinance `download()` with grouped columns for efficiency.
+- Any ticker works — no ticker-specific code paths.
+"""
+
+from __future__ import annotations
+
+import os
+import json
+import math
+import hashlib
+import warnings
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# ─── Cache directory ─────────────────────────────────────────────────────────
+_CACHE_ROOT = Path(__file__).parent / "cache"
+_PRICE_CACHE = _CACHE_ROOT / "prices"
+_NEWS_CACHE  = _CACHE_ROOT / "news"
+_PRICE_CACHE.mkdir(parents=True, exist_ok=True)
+_NEWS_CACHE.mkdir(parents=True, exist_ok=True)
+
+BATCH_SIZE = 50       # tickers per yfinance download call
+MIN_TRADING_DAYS = 20 # minimum days of data to consider a ticker valid
+
+
+def load_price_data(
+    tickers: list[str],
+    start: str,
+    end: str,
+    use_cache: bool = True,
+) -> dict[str, pd.DataFrame]:
+    """
+    Download OHLCV data for all tickers.
+
+    Parameters
+    ----------
+    tickers   : list of ticker symbols
+    start     : "YYYY-MM-DD"
+    end       : "YYYY-MM-DD"
+    use_cache : bool — use parquet cache if available
+
+    Returns
+    -------
+    dict  ticker → DataFrame with columns [Open, High, Low, Close, Volume]
+    """
+    result: dict[str, pd.DataFrame] = {}
+    missing: list[str] = []
+
+    if use_cache:
+        for t in tickers:
+            df = _load_cached_prices(t, start, end)
+            if df is not None:
+                result[t] = df
+            else:
+                missing.append(t)
+    else:
+        missing = list(tickers)
+
+    if missing:
+        print(f"[DATA] Downloading {len(missing)} tickers from yfinance (batch={BATCH_SIZE})…")
+        downloaded = _batch_download(missing, start, end)
+        for t, df in downloaded.items():
+            result[t] = df
+            if use_cache and len(df) >= MIN_TRADING_DAYS:
+                _save_cached_prices(t, start, end, df)
+
+    valid = {t: df for t, df in result.items() if len(df) >= MIN_TRADING_DAYS}
+    skipped = len(result) - len(valid)
+    if skipped:
+        print(f"[DATA] Skipped {skipped} tickers with insufficient history.")
+    print(f"[DATA] Loaded price data: {len(valid)} tickers, "
+          f"{start} → {end}")
+    return valid
+
+
+def build_sentiment_series(
+    ticker: str,
+    price_df: pd.DataFrame,
+    mode: str = "price_momentum",
+    news_cache_dir: Optional[Path] = None,
+) -> pd.Series:
+    """
+    Produce a daily sentiment score series for a single ticker.
+
+    Modes
+    -----
+    "price_momentum"
+        Composite of RSI, 5d/20d momentum, MA crossover, volume z-score.
+        Score is bounded to [-1.0, +1.0] — mirrors FinBERT output range.
+
+    "cached_news"
+        Loads pre-cached FinBERT-scored news JSON files.
+        Falls back to price_momentum if files are missing.
+
+    Returns
+    -------
+    pd.Series  index=DatetimeIndex, values=float in [-1, 1]
+    """
+    if mode == "cached_news":
+        series = _sentiment_from_news_cache(ticker, price_df, news_cache_dir)
+        if series is not None:
+            return series
+        # fallback
+        print(f"[DATA] No cached news for {ticker}, using price_momentum fallback.")
+
+    return _sentiment_from_price_momentum(price_df)
+
+
+# ─── Price download helpers ──────────────────────────────────────────────────
+
+def _batch_download(tickers: list[str], start: str, end: str) -> dict[str, pd.DataFrame]:
+    """Download in batches of BATCH_SIZE to avoid yfinance timeouts."""
+    result: dict[str, pd.DataFrame] = {}
+
+    for i in range(0, len(tickers), BATCH_SIZE):
+        batch = tickers[i : i + BATCH_SIZE]
+        batch_label = f"{i+1}-{min(i+BATCH_SIZE, len(tickers))}/{len(tickers)}"
+        print(f"[DATA]   Batch {batch_label}: {batch[:5]}{'…' if len(batch)>5 else ''}")
+
+        try:
+            raw = yf.download(
+                batch,
+                start=start,
+                end=end,
+                progress=False,
+                auto_adjust=True,
+                threads=True,
+            )
+
+            if raw.empty:
+                continue
+
+            if isinstance(raw.columns, pd.MultiIndex):
+                # multi-ticker download → MultiIndex(field, ticker)
+                for t in batch:
+                    try:
+                        df = raw.xs(t, axis=1, level=1)[["Open", "High", "Low", "Close", "Volume"]]
+                        df = df.dropna(how="all")
+                        if len(df) >= MIN_TRADING_DAYS:
+                            result[t] = df
+                    except (KeyError, TypeError):
+                        pass
+            else:
+                # single-ticker download
+                if len(batch) == 1:
+                    df = raw[["Open", "High", "Low", "Close", "Volume"]].dropna(how="all")
+                    if len(df) >= MIN_TRADING_DAYS:
+                        result[batch[0]] = df
+
+        except Exception as e:
+            print(f"[DATA]   Batch {batch_label} failed: {e}")
+
+    return result
+
+
+# ─── Cache I/O ───────────────────────────────────────────────────────────────
+
+def _cache_key(ticker: str, start: str, end: str) -> str:
+    raw = f"{ticker}_{start}_{end}"
+    return hashlib.md5(raw.encode()).hexdigest()[:12]
+
+
+def _load_cached_prices(ticker: str, start: str, end: str) -> Optional[pd.DataFrame]:
+    fname = _PRICE_CACHE / f"{ticker}_{_cache_key(ticker, start, end)}.parquet"
+    if fname.exists():
+        try:
+            return pd.read_parquet(fname)
+        except Exception:
+            pass
+    return None
+
+
+def _save_cached_prices(ticker: str, start: str, end: str, df: pd.DataFrame):
+    fname = _PRICE_CACHE / f"{ticker}_{_cache_key(ticker, start, end)}.parquet"
+    try:
+        df.to_parquet(fname)
+    except Exception:
+        pass
+
+
+# ─── Sentiment derivation ────────────────────────────────────────────────────
+
+def _sentiment_from_price_momentum(df: pd.DataFrame) -> pd.Series:
+    """
+    Derive a synthetic sentiment score in [-1, 1] from technical signals.
+
+    Composite of four signals (equal weight):
+      1. RSI-based signal:      (RSI - 50) / 50  → [-1, 1]
+      2. 5-day price ROC:       clipped to [-1, 1]
+      3. MA crossover:          sign(5d_MA - 20d_MA) * |ratio - 1| * 10, clipped
+      4. Volume anomaly:        daily volume z-score clipped, sign from price direction
+    """
+    close = df["Close"].squeeze()
+    volume = df["Volume"].squeeze()
+
+    # ── Signal 1: RSI
+    rsi = _rsi(close, period=14)
+    sig_rsi = (rsi - 50.0) / 50.0
+
+    # ── Signal 2: 5d return
+    roc5 = close.pct_change(5).clip(-0.5, 0.5) * 2.0  # scale to [-1,1]
+
+    # ── Signal 3: MA crossover
+    ma5  = close.rolling(5,  min_periods=3).mean()
+    ma20 = close.rolling(20, min_periods=10).mean()
+    ratio = (ma5 / ma20 - 1.0).clip(-0.1, 0.1) * 10.0  # scale ~[-1,1]
+
+    # ── Signal 4: Volume anomaly × price direction
+    vol_mean = volume.rolling(20, min_periods=5).mean()
+    vol_std  = volume.rolling(20, min_periods=5).std().replace(0, 1)
+    vol_z    = ((volume - vol_mean) / vol_std).clip(-2, 2) / 2.0
+    price_dir = np.sign(close.pct_change())
+    sig_vol = vol_z * price_dir
+
+    # ── Composite (equal weight, bounded)
+    composite = (
+        0.35 * sig_rsi.fillna(0)
+        + 0.30 * roc5.fillna(0)
+        + 0.25 * ratio.fillna(0)
+        + 0.10 * sig_vol.fillna(0)
+    ).clip(-1.0, 1.0)
+
+    composite.name = "sentiment"
+    return composite
+
+
+def _rsi(series: pd.Series, period: int = 14) -> pd.Series:
+    """Relative Strength Index — returns 0-100 series."""
+    delta = series.diff()
+    gain  = delta.clip(lower=0).rolling(period, min_periods=period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period, min_periods=period).mean()
+    rs    = gain / loss.replace(0, np.nan)
+    rsi   = 100.0 - (100.0 / (1.0 + rs))
+    return rsi.fillna(50.0)
+
+
+def _sentiment_from_news_cache(
+    ticker: str,
+    price_df: pd.DataFrame,
+    cache_dir: Optional[Path],
+) -> Optional[pd.Series]:
+    """
+    Load pre-scored news JSON files from:
+        <cache_dir>/<TICKER>/<YYYY-MM-DD>.json
+    Each file must contain {"sentiment_score": float}.
+
+    Returns a pd.Series aligned to price_df.index, or None if files missing.
+    """
+    base = cache_dir or _NEWS_CACHE
+    ticker_dir = base / ticker.upper()
+    if not ticker_dir.exists():
+        return None
+
+    scores = {}
+    for f in ticker_dir.glob("????-??-??.json"):
+        try:
+            data = json.loads(f.read_text())
+            date = pd.Timestamp(f.stem)
+            scores[date] = float(data.get("sentiment_score", 0.0))
+        except Exception:
+            pass
+
+    if not scores:
+        return None
+
+    raw = pd.Series(scores).sort_index()
+    aligned = raw.reindex(price_df.index).interpolate(method="time").fillna(0.0)
+    aligned.name = "sentiment"
+    return aligned.clip(-1.0, 1.0)
+
+
+# ─── Convenience: load all data for a backtest run ───────────────────────────
+
+def load_backtest_data(
+    tickers: list[str],
+    start: str,
+    end: str,
+    sentiment_mode: str = "price_momentum",
+    use_cache: bool = True,
+) -> dict[str, dict]:
+    """
+    One-shot: load price + sentiment for all tickers.
+
+    Returns
+    -------
+    {
+      "AAPL": {
+        "prices": DataFrame[Open,High,Low,Close,Volume],
+        "sentiment": Series[float]
+      },
+      ...
+    }
+    """
+    prices = load_price_data(tickers, start, end, use_cache=use_cache)
+
+    out: dict[str, dict] = {}
+    for t, df in prices.items():
+        sentiment = build_sentiment_series(t, df, mode=sentiment_mode)
+        out[t] = {"prices": df, "sentiment": sentiment}
+
+    return out

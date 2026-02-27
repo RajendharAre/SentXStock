@@ -1,0 +1,2 @@
+# Backtest result JSON files are stored here.
+# One .json file per run, named <run_id>.json
