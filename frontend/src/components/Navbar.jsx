@@ -19,10 +19,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-[var(--c-border)] bg-[var(--c-bg)] backdrop-blur-sm transition-colors">
       <div className="max-w-[1360px] mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-2.5" aria-label="Home">
-          <div className="w-7 h-7 rounded-md bg-[#2563eb] flex items-center justify-center">
-            <span className="text-white text-xs font-extrabold leading-none">SX</span>
-          </div>
+        <Link to="/" className="flex items-center gap-2" aria-label="Home">
+          <img src="/logo.png" alt="SentXStock" className="w-8 h-8 object-contain" />
           <span className="text-[15px] font-semibold text-[var(--c-text)] tracking-tight hidden sm:block">
             SentXStock
           </span>

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
   RefreshCw, TrendingUp, TrendingDown, Minus,
   AlertTriangle, IndianRupee, ShieldCheck,
-  BarChart2, Layers, Info,
+  BarChart2, Layers, Info, Clock, Eye,
 } from 'lucide-react';
-import { getPortfolioAllocations, getSettings, setPortfolio } from '../services/api';
+import { getPortfolioAllocations, analyzePortfolioTickers, getSettings, setPortfolio } from '../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -92,9 +92,15 @@ function AllocationCard({ item, index }) {
           </div>
           <div>
             <p className="text-[13px] font-semibold text-[var(--c-text)] leading-tight">{item.ticker}</p>
+            {item.name && (
+              <p className="text-[10px] text-[var(--c-dim)] leading-tight">{item.name}</p>
+            )}
             <div className="flex items-center gap-1 mt-0.5">
               <SentimentIcon sentiment={item.sentiment} />
               <span className="text-[11px] text-[var(--c-muted)]">{item.sentiment || 'Neutral'}</span>
+              {item.is_mock && (
+                <span className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400">Simulated</span>
+              )}
             </div>
           </div>
         </div>
@@ -130,6 +136,11 @@ function AllocationCard({ item, index }) {
           <span>Position capped at 20% limit</span>
         </div>
       )}
+
+      {/* Analyzed at timestamp */}
+      {item.analyzed_at && (
+        <p className="text-[10px] text-[var(--c-dim)]">Analyzed: {item.analyzed_at}</p>
+      )}
     </div>
   );
 }
@@ -137,10 +148,11 @@ function AllocationCard({ item, index }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Portfolio() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [saving, setSaving]   = useState(false);
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [saving, setSaving]     = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
   // Editable capital/risk for inline adjustment
   const [editCapital, setEditCapital] = useState('');
@@ -179,9 +191,30 @@ export default function Portfolio() {
     }
   };
 
+  const handleAnalyzeAll = async () => {
+    setAnalyzing(true);
+    try {
+      await analyzePortfolioTickers();
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const allocs = data?.allocations ?? [];
+  // Use recently viewed 6 companies; fall back to full list only if none viewed yet
+  const recentAllocs  = data?.recent_allocations ?? [];
+  const allAllocs     = data?.allocations ?? [];
+  const allocs        = recentAllocs.length > 0 ? recentAllocs : allAllocs;
+  const recentCount   = data?.recently_viewed?.length ?? 0;
+  const isShowingRecent = recentAllocs.length > 0;
+
+  // Allocated total for display — use only shown allocs
+  const shownTotal = allocs.reduce((s, a) => s + a.allocation_inr, 0);
+
   const pieData = allocs.map((a, i) => ({
     name:   a.ticker,
     value:  a.allocation_pct,
@@ -190,11 +223,12 @@ export default function Portfolio() {
   }));
 
   const freeCashPct = data
-    ? Math.max(0, ((data.available_cash / data.capital) * 100))
+    ? Math.max(0, (((data.capital - shownTotal) / data.capital) * 100))
     : 0;
+  const freeCash = data ? Math.max(0, data.capital - shownTotal) : 0;
 
   if (freeCashPct > 0) {
-    pieData.push({ name: 'Cash', value: freeCashPct, amount: data.available_cash, fill: '#374151' });
+    pieData.push({ name: 'Cash', value: freeCashPct, amount: freeCash, fill: '#374151' });
   }
 
   const riskStyle = RISK_COLORS[data?.risk ?? 'medium'] ?? RISK_COLORS.medium;
@@ -209,7 +243,9 @@ export default function Portfolio() {
         <div>
           <h1 className="text-[20px] font-bold text-[var(--c-text)]">Portfolio Engine</h1>
           <p className="text-[13px] text-[var(--c-muted)] mt-0.5">
-            INR-denominated allocation plan based on sentiment confidence and risk profile
+            {isShowingRecent
+              ? `Allocation plan for your ${recentCount} recently analysed compan${recentCount !== 1 ? 'ies' : 'y'}`
+              : 'INR-denominated allocation plan based on sentiment confidence and risk profile'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -314,15 +350,15 @@ export default function Portfolio() {
             />
             <SummaryCard
               icon={<Layers className="w-4 h-4" />}
-              label="Allocated"
-              value={fmt(data.total_allocated)}
-              sub={fmtPct(data.capital ? (data.total_allocated / data.capital) * 100 : 0)}
+              label={isShowingRecent ? 'Allocated (Recent)' : 'Allocated'}
+              value={fmt(shownTotal)}
+              sub={fmtPct(data.capital ? (shownTotal / data.capital) * 100 : 0)}
               accent="indigo"
             />
             <SummaryCard
               icon={<BarChart2 className="w-4 h-4" />}
               label="Available Cash"
-              value={fmt(data.available_cash)}
+              value={fmt(freeCash)}
               sub={fmtPct(freeCashPct)}
               accent="emerald"
             />
@@ -363,12 +399,32 @@ export default function Portfolio() {
 
           {/* Chart + table layout */}
           {allocs.length > 0 ? (
+            <>
+              {/* Recently viewed banner */}
+              {isShowingRecent && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-4 py-2.5">
+                  <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <p className="text-[12px] text-indigo-300/90">
+                    Showing portfolio for your <span className="font-semibold">{recentCount} recently analysed</span> compan{recentCount !== 1 ? 'ies' : 'y'}.
+                    Analyse more companies on the Dashboard to update this view.
+                  </p>
+                </div>
+              )}
+              {!isShowingRecent && (
+                <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <p className="text-[12px] text-amber-300/90">
+                    No companies analysed yet. Go to the <span className="font-semibold">Dashboard</span>, search and click any company to analyse it — the portfolio will update automatically.
+                  </p>
+                </div>
+              )}
+
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
 
               {/* Allocation cards grid */}
               <div>
                 <h2 className="text-[14px] font-semibold text-[var(--c-text)] mb-3">
-                  Position Breakdown
+                  {isShowingRecent ? 'Recently Analysed' : 'Position Breakdown'}
                   <span className="ml-2 text-[11px] text-[var(--c-muted)] font-normal">
                     {allocs.length} position{allocs.length !== 1 ? 's' : ''}
                   </span>
@@ -463,7 +519,7 @@ export default function Portfolio() {
                             </div>
                           </td>
                           <td className="px-3 py-2 text-right text-[var(--c-muted)]">{fmtPct(freeCashPct)}</td>
-                          <td className="px-3 py-2 text-right text-[var(--c-muted)]">{fmt(data.available_cash)}</td>
+                          <td className="px-3 py-2 text-right text-[var(--c-muted)]">{fmt(freeCash)}</td>
                         </tr>
                       )}
                     </tbody>
@@ -471,6 +527,7 @@ export default function Portfolio() {
                 </div>
               </div>
             </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center h-40 text-center gap-3">
               <BarChart2 className="w-8 h-8 text-[var(--c-border2)]" />
@@ -485,10 +542,8 @@ export default function Portfolio() {
           <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl p-4">
             <p className="text-[11px] text-[var(--c-dim)] leading-relaxed">
               <span className="font-semibold text-[var(--c-muted)]">Disclaimer:</span>{' '}
-              Allocations shown are generated by a sentiment-based model and are for informational purposes only.
-              They do not constitute investment advice. Past performance is not indicative of future results.
-              Please consult a SEBI-registered investment advisor before making any investment decisions.
-              All amounts are in Indian Rupees (INR). SentXStock is not SEBI registered.
+              Allocations shown are generated by a sentiment-based AI model. AI can make mistakes, please go through the real data currently.
+              All amounts are in Indian Rupees (INR).
             </p>
           </div>
         </>

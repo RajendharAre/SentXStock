@@ -429,20 +429,8 @@ function AnalysisPanel({ company, data, onRefresh, btResult, btLoading }) {
               <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-indigo-600/10 border border-indigo-500/20 text-indigo-400">{data.ticker || company.ticker}</span>
               <span className="px-2 py-0.5 rounded text-[11px] font-semibold border border-[var(--c-border)] text-[var(--c-muted)]">{data.exchange || 'NSE'}</span>
               <span className="px-2 py-0.5 rounded text-[11px] border border-[var(--c-border)] text-[var(--c-muted)]">{data.sector || company.sector}</span>
-              {isMock && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400">
-                  ⚠ Simulated Data
-                </span>
-              )}
             </div>
             {explanation && <p className="mt-2 text-[12px] text-[var(--c-muted)] max-w-2xl leading-relaxed">{explanation}</p>}
-            {isMock && (
-              <p className="mt-1.5 text-[11px] text-amber-400/80 max-w-2xl">
-                Live news APIs (Finnhub / NewsAPI) returned no results for this ticker. Sentiment is based on simulated sector-relevant articles. Set{' '}
-                <code className="px-1 py-0.5 rounded bg-[var(--c-border)] font-mono text-[10px]">FINNHUB_API_KEY</code> and{' '}
-                <code className="px-1 py-0.5 rounded bg-[var(--c-border)] font-mono text-[10px]">NEWSAPI_KEY</code> in <code className="px-1 py-0.5 rounded bg-[var(--c-border)] font-mono text-[10px]">.env</code> for live analysis.
-              </p>
-            )}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`inline-block px-5 py-2 rounded-lg border text-[15px] font-extrabold tracking-wide ${recCls}`}>{recLabel}</span>

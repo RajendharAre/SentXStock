@@ -27,12 +27,17 @@ class TradingAPI:
     def __init__(self):
         self._tickers = DEFAULT_TICKERS[:]
         self._cash = 50000.0
-        self._risk_preference = "Medium"  # Conservative, Moderate, Aggressive
+        self._risk_preference = "Medium"  # Low, Medium, High
         self._custom_portfolio = None
         self._agent = None
         self._chatbot = TradingChatbot()
         self._latest_result = None
         self._initialized = False
+        # Per-ticker analysis cache — populated by analyze_ticker() calls
+        # Shape: { "TCS.NS": { confidence: 76.9, recommendation: "BUY", ... } }
+        self._ticker_analysis_cache: dict = {}
+        # Ordered list of last 6 tickers analyzed on Dashboard (most recent first)
+        self._recently_viewed: list = []
 
     # ─── Reset ────────────────────────────────────────────────
 
@@ -162,7 +167,7 @@ class TradingAPI:
         Get detailed sentiment analysis for a specific ticker.
         Returns a shape that exactly matches what the React AnalysisPanel expects.
         """
-        from data.realtime_news import fetch_company_news, fetch_newsapi_for_ticker
+        from data.realtime_news import fetch_company_news, fetch_newsapi_for_ticker, fetch_newsdata_for_ticker
         from sentiment.analyzer import SentimentAnalyzer
         from backtest.universe_india import IndiaUniverse, normalise_ticker
 
@@ -180,7 +185,10 @@ class TradingAPI:
         newsapi_raw = fetch_newsapi_for_ticker(
             ticker, days_back=5, max_items=20, company_name=company_name
         )
-        all_news_raw = news_raw + newsapi_raw
+        newsdata_raw = fetch_newsdata_for_ticker(
+            ticker, days_back=5, max_items=10, company_name=company_name
+        )
+        all_news_raw = news_raw + newsapi_raw + newsdata_raw
 
         # De-duplicate by headline text
         seen: set = set()
@@ -302,6 +310,28 @@ class TradingAPI:
                 f"{bull} bullish, {bear} bearish, {flat} neutral headlines."
             )
 
+        # ── Cache result for Portfolio engine (BEFORE returning) ──────────
+        self._ticker_analysis_cache[ticker] = {
+            "confidence":     confidence,          # 0-100 scale
+            "recommendation": rec_str,
+            "sentiment":      label,
+            "score":          score,
+            "name":           company_name,
+            "sector":         sector,
+            "bull":           bull,
+            "bear":           bear,
+            "neutral":        flat,
+            "total":          total_hl,
+            "is_mock":        is_mock,
+            "timestamp":      datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        # ── Track recently viewed (last 6, most recent first) ─────────────
+        if ticker in self._recently_viewed:
+            self._recently_viewed.remove(ticker)
+        self._recently_viewed.insert(0, ticker)
+        self._recently_viewed = self._recently_viewed[:6]
+
         # ── Return exactly what the React AnalysisPanel reads ─────────────
         return {
             # Company identity
@@ -351,19 +381,53 @@ class TradingAPI:
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
+    def analyze_portfolio_tickers(self) -> dict:
+        """
+        Run analyze_ticker() on all tickers in the current watchlist.
+        Results are saved to _ticker_analysis_cache.
+        Returns a summary of results.
+        """
+        results = {}
+        errors  = {}
+        for ticker in self._tickers:
+            try:
+                r = self.analyze_ticker(ticker)
+                results[ticker] = {
+                    "ok":             True,
+                    "recommendation": r.get("recommendation", "HOLD"),
+                    "confidence":     r.get("confidence", 50.0),
+                    "sentiment":      r.get("label", "Neutral"),
+                    "score":          r.get("score", 0.0),
+                    "is_mock":        r.get("is_mock_data", False),
+                }
+            except Exception as e:
+                errors[ticker] = str(e)
+        return {
+            "analyzed":  list(results.keys()),
+            "failed":    list(errors.keys()),
+            "results":   results,
+            "errors":    errors,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+    def clear_ticker_cache(self):
+        """Clear the per-ticker analysis cache."""
+        self._ticker_analysis_cache = {}
+
     # ─── Chatbot ─────────────────────────────────────────────
 
     def chat(self, question: str) -> dict:
         """
         Ask the AI trading advisor a question.
-        
-        Args:
-            question: User's question (e.g., "Should I buy AAPL?")
-        
-        Returns:
-            dict with 'answer', 'timestamp', 'method'
+        Passes both global market data and per-ticker Dashboard cache so the
+        chatbot can answer questions about any stock the user has analysed.
         """
-        return self._chatbot.ask(question, self._latest_result)
+        return self._chatbot.ask(
+            question,
+            market_data=self._latest_result,
+            ticker_cache=self._ticker_analysis_cache,
+            recently_viewed=self._recently_viewed,
+        )
 
     def get_chat_history(self) -> list:
         """Get conversation history."""
@@ -409,57 +473,104 @@ class TradingAPI:
     def get_portfolio_allocations(self) -> dict:
         """
         Compute per-ticker INR allocations using:
-          allocation_pct = confidence × risk_multiplier × (1 / n_positions)
+          allocation_pct = (confidence/100) × risk_multiplier × (1 / n_positions)
           capped at 20% max single position.
-        If no analysis has run, confidence defaults to 0.5 (neutral).
+
+        Data priority:
+          1. _ticker_analysis_cache  (populated by analyze_ticker()  — most fresh)
+          2. _latest_result orders   (populated by run_analysis() — full pipeline)
+          3. Defaults: confidence=50%, sentiment=Neutral, rec=HOLD
         """
         risk_mult_map = {"Low": 0.5, "Medium": 1.0, "High": 1.5}
         rk = risk_mult_map.get(self._risk_preference, 1.0)
-        n = max(len(self._tickers), 1)
+        n  = max(len(self._tickers), 1)
 
-        # Pull last known per-ticker sentiment from latest result (if any)
-        ticker_data_map = {}
+        # Secondary source: full pipeline orders
+        pipeline_map: dict = {}
         if self._latest_result:
             for order in self._latest_result.get("orders", []):
                 t = order.get("ticker", "")
                 if t:
-                    ticker_data_map[t] = order
+                    pipeline_map[t] = order
 
         allocations = []
         for ticker in self._tickers:
-            tdata = ticker_data_map.get(ticker, {})
-            # confidence: 0–1; default 0.5 if no analysis
-            confidence = abs(tdata.get("confidence", 0.5))
-            sentiment_label = tdata.get("sentiment", "Neutral")
-            score = tdata.get("score", 0.0)
-            recommendation = tdata.get("action", "HOLD")
+            # 1. Try per-ticker cache (most recent individual analysis)
+            cached = self._ticker_analysis_cache.get(ticker)
+            if cached:
+                # confidence stored as 0-100 scale from analyze_ticker()
+                confidence_01  = max(0.0, min(1.0, cached["confidence"] / 100.0))
+                sentiment_label = cached.get("sentiment", "Neutral")
+                score           = cached.get("score", 0.0)
+                recommendation  = cached.get("recommendation", "HOLD")
+                is_mock         = cached.get("is_mock", False)
+                analyzed_at     = cached.get("timestamp", None)
+                name            = cached.get("name", ticker.replace(".NS", ""))
+                sector          = cached.get("sector", "")
+            else:
+                # 2. Fall back to pipeline orders
+                pipe = pipeline_map.get(ticker, {})
+                # pipeline stores confidence 0-1
+                confidence_01  = abs(pipe.get("confidence", 0.5))
+                sentiment_label = pipe.get("sentiment", "Neutral")
+                score           = pipe.get("score", 0.0)
+                recommendation  = pipe.get("action", "HOLD")
+                is_mock         = False
+                analyzed_at     = None
+                # Try to get name from universe
+                try:
+                    from backtest.universe_india import IndiaUniverse
+                    name   = IndiaUniverse().name(ticker) or ticker.replace(".NS", "")
+                    sector = IndiaUniverse().sector(ticker)
+                except Exception:
+                    name   = ticker.replace(".NS", "")
+                    sector = ""
 
-            raw_pct = confidence * rk * (1.0 / n)
+            raw_pct    = confidence_01 * rk * (1.0 / n)
             capped_pct = min(raw_pct, 0.20)
-            amount = self._cash * capped_pct
+            amount     = self._cash * capped_pct
 
             allocations.append({
-                "ticker": ticker,
-                "confidence": round(confidence, 4),
-                "sentiment": sentiment_label,
-                "score": round(score, 4),
+                "ticker":         ticker,
+                "name":           name,
+                "sector":         sector,
+                "confidence":     round(confidence_01, 4),    # 0-1 for ConfidenceBar
+                "sentiment":      sentiment_label,
+                "score":          round(score, 4),
                 "recommendation": recommendation,
                 "allocation_pct": round(capped_pct * 100, 2),
                 "allocation_inr": round(amount, 2),
-                "capped": raw_pct > 0.20,
+                "capped":         raw_pct > 0.20,
+                "is_mock":        is_mock,
+                "analyzed_at":    analyzed_at,
+                "has_analysis":   cached is not None,
             })
 
         total_allocated = sum(a["allocation_inr"] for a in allocations)
+        has_any_analysis = any(a["has_analysis"] for a in allocations)
+
+        # ── Filter to recently viewed (last 6) for portfolio display ──────
+        recent = self._recently_viewed  # ordered list, most recent first
+        recent_allocations = [a for a in allocations if a["ticker"] in recent]
+        # preserve recent-first order
+        recent_allocations.sort(key=lambda a: recent.index(a["ticker"]) if a["ticker"] in recent else 99)
+        recent_total = sum(a["allocation_inr"] for a in recent_allocations)
+
         return {
-            "capital": self._cash,
-            "risk": self._risk_preference.lower(),
+            "capital":        self._cash,
+            "risk":           self._risk_preference.lower(),
             "risk_multiplier": rk,
-            "n_positions": n,
-            "allocations": allocations,
+            "n_positions":    n,
+            "allocations":    allocations,
+            "recent_allocations": recent_allocations,
+            "recently_viewed":    recent,
+            "recent_total":       round(recent_total, 2),
             "total_allocated": round(total_allocated, 2),
             "available_cash": round(self._cash - total_allocated, 2),
-            "has_analysis": self._initialized,
-            "timestamp": self._latest_result.get("timestamp", None) if self._latest_result else None,
+            "has_analysis":   has_any_analysis,
+            "tickers":        list(self._tickers),
+            "timestamp":      datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "cache_keys":     list(self._ticker_analysis_cache.keys()),
         }
 
     @staticmethod

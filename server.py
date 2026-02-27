@@ -223,6 +223,13 @@ def get_portfolio_allocations():
     return jsonify(trading_api.get_portfolio_allocations())
 
 
+@app.route("/api/portfolio/analyze-all", methods=["POST"])
+def analyze_portfolio_tickers():
+    """Run sentiment analysis on all watchlist tickers and cache results."""
+    result = trading_api.analyze_portfolio_tickers()
+    return jsonify(result)
+
+
 # ─── Chatbot ──────────────────────────────────────────────────
 
 @app.route("/api/chat", methods=["POST"])
@@ -281,7 +288,7 @@ def _run_backtest_bg(params: dict):
             sell_threshold     = float(params.get("sell_threshold", -0.10)),
             max_position_pct   = float(params.get("max_position_pct", 0.05)),
             initial_capital    = float(params.get("initial_capital",  100_000)),
-            benchmark_ticker   = params.get("benchmark_ticker", "SPY"),
+            benchmark_ticker   = params.get("benchmark_ticker", "^NSEI"),
             slippage_bps       = float(params.get("slippage_bps", 5.0)),
             allow_shorts       = bool(params.get("allow_shorts", False)),
             max_open_positions = int(params.get("max_open_positions", 20)),
@@ -441,4 +448,4 @@ if __name__ == "__main__":
     print("  SentXStock API Server")
     print("  http://localhost:5000")
     print("=" * 50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=False, port=5000, use_reloader=False, threaded=True)

@@ -8,7 +8,7 @@ from datetime import datetime
 
 from data.mock_news import get_mock_news
 from data.mock_social import get_mock_social_posts
-from data.realtime_news import fetch_finnhub_news, fetch_company_news, fetch_newsapi_headlines, fetch_newsapi_for_ticker
+from data.realtime_news import fetch_finnhub_news, fetch_company_news, fetch_newsapi_headlines, fetch_newsapi_for_ticker, fetch_newsdata_for_ticker
 from data.realtime_social import fetch_social_multiple
 from data.scraper import scrape_reddit_titles
 
@@ -129,6 +129,7 @@ class TradingAgent:
             news_data.extend(fetch_newsapi_headlines(category="technology", max_items=10))
             for ticker in tickers[:3]:
                 news_data.extend(fetch_newsapi_for_ticker(ticker, days_back=3))
+                news_data.extend(fetch_newsdata_for_ticker(ticker, days_back=3))
 
             # Deduplicate by headline (same headline from different sources)
             seen_headlines = set()

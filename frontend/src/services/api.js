@@ -38,7 +38,8 @@ export const getLatestResult = () => api.get('/result');
 export const getDashboard = () => api.get('/dashboard');
 
 // ─── Portfolio Allocations ────────────────────────────────────
-export const getPortfolioAllocations = () => api.get('/portfolio/allocations');
+export const getPortfolioAllocations    = () => api.get('/portfolio/allocations');
+export const analyzePortfolioTickers    = () => api.post('/portfolio/analyze-all');
 
 // ─── Chatbot ─────────────────────────────────────────────────
 export const sendChat = (question) => api.post('/chat', { question });

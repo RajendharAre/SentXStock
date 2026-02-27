@@ -289,9 +289,11 @@ export default function Home() {
     <div className="space-y-20 pb-20">
 
       {/* ── 1. Hero ─────────────────────────────────────────────────────────── */}
-      <section className="pt-10 sm:pt-16">
-        <div className="max-w-3xl">
-          <div className="flex items-center gap-2 mb-5">
+      <section className="pt-12 sm:pt-20 lg:pt-24">
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+
+          {/* badges */}
+          <div className="flex items-center flex-wrap justify-center gap-2 mb-6">
             <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold border border-indigo-500/30 bg-indigo-600/10 text-indigo-400 tracking-wide">
               NSE Indian Markets
             </span>
@@ -303,7 +305,8 @@ export default function Home() {
             </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[var(--c-text)] leading-tight tracking-tight">
+          {/* headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[var(--c-text)] leading-tight tracking-tight">
             Sentiment-Driven
             <br />
             <span className="text-indigo-400">Trading Research</span>
@@ -311,37 +314,38 @@ export default function Home() {
             for Indian Markets
           </h1>
 
-          <p className="mt-5 text-base sm:text-lg text-[var(--c-muted)] leading-relaxed max-w-2xl">
+          {/* description */}
+          <p className="mt-6 text-base sm:text-lg text-[var(--c-muted)] leading-relaxed max-w-2xl">
             SentXStock analyses today&apos;s financial news using FinBERT, runs an automated
             3-year backtest on NSE historical data, and generates risk-adjusted portfolio
             recommendations — all from a single company search.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          {/* CTAs */}
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               to="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors"
             >
               Open Dashboard
               <ChevronRight className="w-4 h-4" />
             </Link>
             <Link
               to="/settings"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] hover:border-[var(--c-border2)] text-[var(--c-sub)] font-semibold text-sm transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] hover:border-[var(--c-border2)] text-[var(--c-sub)] font-semibold text-sm transition-colors"
             >
               Configure Portfolio
             </Link>
           </div>
 
           {/* disclaimer ribbon */}
-          <div className="mt-8 flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3.5">
+          <div className="mt-8 w-full flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3.5 text-left">
             <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-300/80 leading-relaxed">
-              SentXStock is a research and educational platform. Output does not constitute
-              financial advice. Consult a SEBI-registered advisor before making investment
-              decisions.
+              AI can make mistakes, please go through the real data currently.
             </p>
           </div>
+
         </div>
       </section>
 

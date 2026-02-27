@@ -15,6 +15,7 @@ GEMINI_API_KEYS = [k.strip() for k in _raw_gemini_keys.split(",") if k.strip()]
 GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else ""
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
+NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "")
 
 # ─── LLM Settings ───────────────────────────────────────────
 GEMINI_MODEL = "gemini-2.0-flash"
@@ -52,8 +53,20 @@ NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 NEWSAPI_HEADLINES_URL = f"{NEWSAPI_BASE_URL}/top-headlines"
 NEWSAPI_EVERYTHING_URL = f"{NEWSAPI_BASE_URL}/everything"
 
+# ─── NewsData.io Endpoints ───────────────────────────────────
+NEWSDATA_BASE_URL = "https://newsdata.io/api/1"
+NEWSDATA_LATEST_URL = f"{NEWSDATA_BASE_URL}/latest"
+NEWSDATA_NEWS_URL = f"{NEWSDATA_BASE_URL}/news"
+
 # ─── StockTwits (No key needed) ─────────────────────────────
 STOCKTWITS_BASE_URL = "https://api.stocktwits.com/api/2/streams/symbol"
 
 # ─── Tracked Tickers ────────────────────────────────────────
-DEFAULT_TICKERS = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]
+# Default watchlist — NSE blue chips for the Indian market
+DEFAULT_TICKERS = [
+    "TCS.NS",       # Tata Consultancy Services
+    "HDFCBANK.NS",  # HDFC Bank
+    "RELIANCE.NS",  # Reliance Industries
+    "INFY.NS",      # Infosys
+    "ICICIBANK.NS", # ICICI Bank
+]

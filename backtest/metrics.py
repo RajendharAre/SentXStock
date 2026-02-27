@@ -174,7 +174,11 @@ def compute_per_ticker_metrics(
     -------
     list of dicts, sorted by Sharpe descending
     """
-    results = [compute_metrics(ret, ticker) for ticker, ret in ticker_returns.items()]
+    results = []
+    for ticker, ret in ticker_returns.items():
+        m = compute_metrics(ret, ticker)
+        m["ticker"] = ticker   # add explicit ticker key for frontend
+        results.append(m)
     return sorted(results, key=lambda x: x["sharpe_ratio"], reverse=True)
 
 

@@ -33,6 +33,7 @@ from backtest.metrics     import compute_metrics
 from backtest.report      import save_result
 from backtest.strategy    import StrategyConfig, build_strategy
 from backtest.universe    import Universe
+from backtest.universe_india import IndiaUniverse
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -51,7 +52,7 @@ def run_backtest(
     sell_threshold:    float               = -0.10,
     max_position_pct:  float               = 0.05,
     initial_capital:   float               = 100_000.0,
-    benchmark_ticker:  str                 = "SPY",
+    benchmark_ticker:  str                 = "^NSEI",     # Nifty 50 (India benchmark)
     slippage_bps:      float               = 5.0,
     allow_shorts:      bool                = False,
     max_open_positions:int                 = 20,
@@ -85,7 +86,7 @@ def run_backtest(
 
     # ── 1. Resolve ticker list ────────────────────────────────────────────
     if tickers is None:
-        universe = Universe()
+        universe = IndiaUniverse()   # default: full NSE universe (not S&P500)
         if sector:
             tickers = universe.tickers_by_sector().get(sector, [])
             if not tickers:
@@ -118,8 +119,9 @@ def run_backtest(
         start          = start,
         end            = end,
         sentiment_mode = sentiment_mode,
-        verbose        = verbose,
     )
+    if verbose:
+        print(f"[RUNNER] Loaded {len(raw)} tickers from data_loader")
 
     # Separate benchmark from strategy data
     bench_data   = raw.pop(benchmark_ticker, None)

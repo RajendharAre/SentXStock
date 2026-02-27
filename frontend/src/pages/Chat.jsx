@@ -159,7 +159,7 @@ function AiMessageContent({ text, method, dataUsed }) {
       {/* Source badge */}
       <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[var(--c-border)]">
         <MethodBadge method={dataUsed === false && method !== 'gemini' ? 'no_data' : method} />
-        <span className="text-[9px] text-[var(--c-dimmer)]">For educational purposes only. Not financial advice.</span>
+        <span className="text-[9px] text-[var(--c-dimmer)]">AI can make mistakes, please go through the real data currently.</span>
       </div>
     </div>
   );
@@ -319,7 +319,7 @@ export default function Chat() {
             <div className="flex items-start gap-2 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 max-w-lg">
               <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-[10px] text-amber-300/80 leading-relaxed">
-                For educational purposes only — not financial advice. Always consult a SEBI-registered advisor before investing.
+                AI can make mistakes, please go through the real data currently.
               </p>
             </div>
           </div>
