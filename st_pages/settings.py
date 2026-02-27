@@ -38,9 +38,10 @@ def render_settings():
             if tickers:
                 result = api.set_user_tickers(tickers)
                 if result.get("success"):
-                    st.session_state.result = None  # clear stale dashboard
-                    st.success(f"Watchlist updated — {', '.join(tickers)}")
-                    st.info("Go to Dashboard and press Run Analysis to see new results.")
+                    api.reset_results()             # wipe _latest_result + _initialized
+                    st.session_state.result = None  # wipe Streamlit cache
+                    st.success(f"✅ Watchlist updated — {', '.join(tickers)}")
+                    st.info("📈 Go to Dashboard and press Run Analysis to see new results.")
                 else:
                     st.error(result.get("error", "Update failed"))
             else:
@@ -79,9 +80,10 @@ def render_settings():
         if st.button("Save Portfolio", key="btn_portfolio"):
             result = api.set_user_portfolio(cash=float(cash), risk=risk)
             if result.get("success"):
-                st.session_state.result = None  # clear stale dashboard
-                st.success(result.get("message", "Portfolio updated"))
-                st.info("Go to Dashboard and press Run Analysis to see updated results.")
+                api.reset_results()             # wipe _latest_result + _initialized
+                st.session_state.result = None  # wipe Streamlit cache
+                st.success(f"✅ {result.get('message', 'Portfolio updated')}")
+                st.info("📈 Go to Dashboard and press Run Analysis to see updated results.")
             else:
                 st.error(result.get("error", "Update failed"))
 

@@ -34,6 +34,14 @@ class TradingAPI:
         self._latest_result = None
         self._initialized = False
 
+    # ─── Reset ────────────────────────────────────────────────
+
+    def reset_results(self):
+        """Clear cached analysis result so the next run starts fresh."""
+        self._latest_result = None
+        self._initialized = False
+        self._agent = None
+
     # ─── User Setup ──────────────────────────────────────────
 
     def set_user_tickers(self, tickers: list[str]) -> dict:
