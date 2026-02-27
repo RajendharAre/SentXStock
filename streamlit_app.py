@@ -26,239 +26,305 @@ if "chat_msgs" not in st.session_state:
 # ─── Custom CSS ───────────────────────────────────────
 st.markdown("""
 <style>
-    /* Dark pro theme overrides */
-    .stApp { background: #080c14; }
-    
-    section[data-testid="stSidebar"] {
-        background: #0b1018;
-        border-right: 1px solid #151d2e;
-    }
-    
-    section[data-testid="stSidebar"] .stMarkdown p,
-    section[data-testid="stSidebar"] .stMarkdown span {
-        color: #94a3b8;
-    }
-    
-    /* Metric cards */
-    [data-testid="stMetric"] {
-        background: #0d1320;
-        border: 1px solid #151d2e;
-        border-radius: 8px;
-        padding: 16px 20px;
-    }
-    [data-testid="stMetricLabel"] p { color: #4b5563 !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.05em; }
-    [data-testid="stMetricValue"] { color: #e2e8f0 !important; font-family: 'JetBrains Mono', monospace !important; }
-    [data-testid="stMetricDelta"] { font-family: 'JetBrains Mono', monospace !important; }
-    
-    /* Card containers */
-    .card-box {
-        background: #0d1320;
-        border: 1px solid #151d2e;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 8px;
-    }
-    .card-title {
-        font-size: 11px;
-        color: #4b5563;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-        margin-bottom: 12px;
-    }
-    
-    /* Sentiment score big number */
-    .big-score {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 36px;
-        font-weight: 700;
-        line-height: 1;
-        margin-bottom: 4px;
-    }
-    .score-label {
-        font-size: 13px;
-        font-weight: 500;
-    }
-    
-    /* Gauge bar */
-    .gauge-container {
-        position: relative;
-        height: 6px;
-        border-radius: 3px;
-        background: linear-gradient(90deg, #ef4444 0%, #4b5563 50%, #22c55e 100%);
-        opacity: 0.3;
-        margin-top: 16px;
-    }
-    .gauge-dot {
-        position: absolute;
-        top: -5px;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 3px solid #080c14;
-        transform: translateX(-50%);
-    }
-    .gauge-labels {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 6px;
-        font-size: 10px;
-        color: #374151;
-    }
-    
-    /* Order pills */
-    .pill-buy  { color: #22c55e; background: rgba(34,197,94,0.1); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
-    .pill-sell { color: #ef4444; background: rgba(239,68,68,0.1); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
-    .pill-hold { color: #64748b; background: rgba(100,116,139,0.1); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
-    
-    /* Chat bubbles */
-    .chat-user {
-        background: #2563eb;
-        color: white;
-        padding: 10px 14px;
-        border-radius: 14px 14px 4px 14px;
-        font-size: 13px;
-        max-width: 75%;
-        margin-left: auto;
-        margin-bottom: 8px;
-    }
-    .chat-bot {
-        background: #0d1320;
-        border: 1px solid #151d2e;
-        color: #c8d1dc;
-        padding: 10px 14px;
-        border-radius: 14px 14px 14px 4px;
-        font-size: 13px;
-        max-width: 75%;
-        margin-bottom: 8px;
-    }
-    
-    /* Ticker chip */
-    .ticker-chip {
-        display: inline-flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #080c14;
-        border: 1px solid #151d2e;
-        border-radius: 6px;
-        padding: 8px 12px;
-        min-width: 120px;
-    }
-    .ticker-name { font-size: 13px; font-weight: 600; color: white; }
-    .ticker-score { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
-    
-    /* Buttons */
-    .stButton > button {
-        background: #2563eb !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 6px !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        padding: 8px 20px !important;
-    }
-    .stButton > button:hover {
-        background: #1d4ed8 !important;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 0; border-bottom: 1px solid #151d2e; }
-    .stTabs [data-baseweb="tab"] {
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 500;
-        padding: 8px 20px;
-        border-bottom: 2px solid transparent;
-    }
-    .stTabs [aria-selected="true"] {
-        color: white !important;
-        border-bottom-color: #2563eb !important;
-        background: transparent !important;
-    }
-    
-    /* Text input */
-    .stTextInput input, .stNumberInput input, .stTextArea textarea {
-        background: #080c14 !important;
-        border: 1px solid #151d2e !important;
-        color: white !important;
-        border-radius: 6px !important;
-    }
-    .stTextInput input:focus, .stNumberInput input:focus, .stTextArea textarea:focus {
-        border-color: #2563eb !important;
-        box-shadow: 0 0 0 2px rgba(37,99,235,0.15) !important;
-    }
-    
-    /* Select box / Radio */
-    .stSelectbox > div > div { background: #080c14 !important; border: 1px solid #151d2e !important; color: white !important; }
-    .stRadio label { color: #94a3b8 !important; }
-    
-    /* Dividers */
-    hr { border-color: #151d2e !important; }
-    
-    /* Hide Streamlit branding */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    header { visibility: hidden; }
-    
-    /* Sidebar nav styling */
-    .sidebar-nav {
-        padding: 4px 0;
-    }
-    .sidebar-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 0 20px 0;
-        border-bottom: 1px solid #151d2e;
-        margin-bottom: 16px;
-    }
-    .sidebar-logo-box {
-        width: 32px; height: 32px;
-        background: #2563eb;
-        border-radius: 6px;
-        display: flex; align-items: center; justify-content: center;
-        color: white; font-size: 13px; font-weight: 800;
-    }
-    .sidebar-logo-text {
-        font-size: 16px;
-        font-weight: 600;
-        color: white;
-        letter-spacing: -0.02em;
-    }
-    .live-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        font-size: 11px; color: #4b5563; font-weight: 500;
-    }
-    .live-dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: #22c55e;
-        animation: blink 2.4s ease-in-out infinite;
-    }
-    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* ── Base ────────────────────────── */
+html, body, .stApp {
+    background: #0a0e17 !important;
+    color: #c9d1d9 !important;
+    font-family: 'Inter', -apple-system, sans-serif !important;
+}
+
+/* ── Sidebar ─────────────────────── */
+section[data-testid="stSidebar"] {
+    background: #0d1117 !important;
+    border-right: 1px solid #1b2332 !important;
+}
+section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
+
+/* ── Metric cards ────────────────── */
+[data-testid="stMetric"] {
+    background: #111820;
+    border: 1px solid #1b2332;
+    border-radius: 10px;
+    padding: 18px 20px 14px;
+}
+[data-testid="stMetricLabel"] p {
+    color: #636e7b !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+[data-testid="stMetricValue"] {
+    color: #e6edf3 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+    font-size: 22px !important;
+}
+[data-testid="stMetricDelta"] {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 12px !important;
+}
+
+/* ── Cards ───────────────────────── */
+.sx-card {
+    background: #111820;
+    border: 1px solid #1b2332;
+    border-radius: 10px;
+    padding: 22px 24px;
+}
+.sx-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #636e7b;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+}
+
+/* ── Sentiment ───────────────────── */
+.sx-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+}
+.sx-score-label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.sx-gauge-track {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: #1b2332;
+    margin-top: 20px;
+    overflow: visible;
+}
+.sx-gauge-fill {
+    position: absolute; top: 0; left: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+.sx-gauge-needle {
+    position: absolute;
+    top: 50%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2.5px solid #0a0e17;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+.sx-gauge-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #3d4752;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+}
+
+/* ── Order pills ─────────────────── */
+.sx-order-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #1b2332;
+}
+.sx-order-row:last-child { border-bottom: none; }
+.sx-pill {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+.sx-pill-buy  { color: #3fb950; background: rgba(63,185,80,0.12); }
+.sx-pill-sell { color: #f85149; background: rgba(248,81,73,0.12); }
+.sx-pill-hold { color: #8b949e; background: rgba(139,148,158,0.10); }
+
+/* ── Allocation bar ──────────────── */
+.sx-alloc-bar {
+    display: flex; height: 10px;
+    border-radius: 5px; overflow: hidden;
+    margin: 16px 0 12px;
+}
+.sx-alloc-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #8b949e;
+}
+.sx-alloc-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%; flex-shrink: 0;
+}
+.sx-alloc-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; color: #c9d1d9;
+}
+
+/* ── Chat ────────────────────────── */
+.sx-msg-user {
+    background: #1f6feb; color: #fff;
+    padding: 12px 16px;
+    border-radius: 16px 16px 4px 16px;
+    font-size: 14px; line-height: 1.5;
+    max-width: 72%; word-wrap: break-word;
+}
+.sx-msg-bot {
+    background: #161b22;
+    border: 1px solid #1b2332;
+    color: #c9d1d9;
+    padding: 12px 16px;
+    border-radius: 16px 16px 16px 4px;
+    font-size: 14px; line-height: 1.5;
+    max-width: 72%; word-wrap: break-word;
+}
+
+/* ── Buttons ─────────────────────── */
+.stButton > button {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    padding: 0.45rem 1.2rem !important;
+    transition: all 0.15s ease !important;
+}
+
+/* ── Inputs ──────────────────────── */
+.stTextInput input, .stNumberInput input, .stTextArea textarea {
+    background: #0d1117 !important;
+    border: 1px solid #1b2332 !important;
+    color: #e6edf3 !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+}
+.stTextInput input:focus, .stNumberInput input:focus {
+    border-color: #1f6feb !important;
+    box-shadow: 0 0 0 3px rgba(31,111,235,0.12) !important;
+}
+.stTextInput label, .stNumberInput label, .stSelectbox label {
+    color: #8b949e !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+.stSelectbox > div > div {
+    background: #0d1117 !important;
+    border: 1px solid #1b2332 !important;
+    border-radius: 8px !important;
+}
+
+/* ── Radio nav ───────────────────── */
+.stRadio > div { gap: 2px !important; }
+.stRadio label {
+    color: #8b949e !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+}
+.stRadio label:hover { background: rgba(31,111,235,0.06) !important; color: #c9d1d9 !important; }
+
+/* ── Dividers / Chrome ───────────── */
+hr { border-color: #1b2332 !important; opacity: 0.5 !important; }
+#MainMenu, footer, header { visibility: hidden !important; }
+
+/* ── Scrollbar ───────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0e17; }
+::-webkit-scrollbar-thumb { background: #1b2332; border-radius: 3px; }
+
+/* ── Sidebar brand ───────────────── */
+.sx-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 0 20px;
+    border-bottom: 1px solid #1b2332;
+    margin-bottom: 12px;
+}
+.sx-brand-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, #1f6feb, #388bfd);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 13px; font-weight: 800;
+}
+.sx-brand-name {
+    font-size: 17px; font-weight: 700; color: #e6edf3;
+    letter-spacing: -0.02em;
+}
+.sx-live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #636e7b; font-weight: 500;
+    margin-top: 2px;
+}
+.sx-live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #3fb950;
+    animation: sx-blink 2s ease-in-out infinite;
+}
+@keyframes sx-blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+/* ── Empty state ─────────────────── */
+.sx-empty {
+    text-align: center; padding: 80px 20px; color: #636e7b;
+}
+.sx-empty-icon { font-size: 48px; opacity: 0.08; margin-bottom: 16px; }
+.sx-empty-title { font-size: 16px; font-weight: 600; color: #8b949e; margin-bottom: 6px; }
+.sx-empty-sub { font-size: 13px; color: #4b5563; }
+
+/* ── Risk badge ──────────────────── */
+.sx-risk-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600;
+    padding: 6px 14px; border-radius: 8px;
+}
+
+/* ── About items ─────────────────── */
+.sx-about-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #1b2332;
+}
+.sx-about-item:last-child { border-bottom: none; }
+.sx-about-label {
+    font-size: 11px; font-weight: 600; color: #636e7b;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 4px;
+}
+.sx-about-value {
+    font-size: 13px; color: #c9d1d9; line-height: 1.5;
+}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
 
 # ─── Sidebar ──────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div class="sidebar-nav">
-        <div class="sidebar-logo">
-            <div class="sidebar-logo-box">SX</div>
-            <span class="sidebar-logo-text">SentXStock</span>
+    <div class="sx-brand">
+        <div class="sx-brand-icon">SX</div>
+        <div>
+            <div class="sx-brand-name">SentXStock</div>
+            <div class="sx-live"><div class="sx-live-dot"></div> Real-time</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     page = st.radio(
-        "Navigate",
+        "Navigation",
         ["Dashboard", "Chat", "Settings"],
         label_visibility="collapsed",
     )
 
     st.markdown("---")
-    st.markdown('<div class="live-badge"><div class="live-dot"></div> LIVE</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="font-size:11px; color:#3d4752; line-height:1.6; padding:4px 0;">
+        FinBERT + Gemini 2.0-flash + VADER<br>
+        Finnhub · NewsAPI · Reddit
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ─── Page Router ──────────────────────────────────────
