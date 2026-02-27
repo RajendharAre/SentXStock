@@ -39,7 +39,7 @@ def render_dashboard():
     tickers = settings.get("tickers", [])
 
     # ── Header ────────────────────────────────────────
-    h_left, h_right = st.columns([4, 1])
+    h_left, h_mid, h_right = st.columns([3, 1, 1])
     with h_left:
         st.markdown(
             '<div style="font-size:22px; font-weight:700; color:#e6edf3; margin-bottom:2px;">Dashboard</div>',
@@ -50,16 +50,19 @@ def render_dashboard():
                 f'<div style="font-size:13px; color:#636e7b;">Tracking <span style="color:#8b949e; font-weight:500;">{" · ".join(tickers)}</span></div>',
                 unsafe_allow_html=True,
             )
+    with h_mid:
+        use_mock = st.toggle("Mock data", value=False, help="Use demo data instead of live APIs")
     with h_right:
         run_btn = st.button("Run Analysis", type="primary", use_container_width=True)
 
     # ── Run analysis ──────────────────────────────────
     if run_btn:
-        with st.spinner("Running sentiment pipeline …"):
+        with st.spinner("Running sentiment pipeline — this may take 30-60 s …"):
             try:
-                result = api.run_analysis(use_mock=False)
+                result = api.run_analysis(use_mock=use_mock)
                 st.session_state.result = result
-                st.rerun()
+                st.session_state.analysis_count = st.session_state.get("analysis_count", 0) + 1
+                st.toast("Analysis complete!", icon="✅")
             except Exception as e:
                 st.error(f"Analysis failed: {e}")
                 return
@@ -74,7 +77,8 @@ def render_dashboard():
             <div class="sx-empty">
                 <div class="sx-empty-icon">📊</div>
                 <div class="sx-empty-title">No data yet</div>
-                <div class="sx-empty-sub">Configure tickers in Settings, then press Run Analysis.</div>
+                <div class="sx-empty-sub">Configure tickers in Settings, then press <b>Run Analysis</b>.<br>
+                    Toggle <b>Mock data</b> for a quick demo without API calls.</div>
             </div>
             """, unsafe_allow_html=True)
             return
@@ -108,7 +112,18 @@ def render_dashboard():
         ts = result.get("timestamp", "—")
 
     # ── KPI strip ─────────────────────────────────────
-    st.markdown("")
+    # Timestamp banner
+    run_num = st.session_state.get("analysis_count", 1)
+    st.markdown(
+        f'<div style="display:flex; justify-content:space-between; align-items:center; '
+        f'padding:8px 14px; background:#111820; border:1px solid #1b2332; border-radius:8px; '
+        f'margin-bottom:8px; font-size:12px;">'
+        f'<span style="color:#636e7b;">Last updated <span style="color:#8b949e; font-weight:600;">{ts}</span></span>'
+        f'<span style="color:#3d4752;">Run #{run_num} · {total} headlines analyzed</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Headlines", total)
     k2.metric("Bullish", bull, delta=f"{(bull/total*100):.0f}%" if total else None, delta_color="normal")
