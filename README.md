@@ -131,8 +131,11 @@ SentXStock/
 │   ├── risk.py               # Risk engine (dynamic risk adjustment)
 │   └── orders.py             # Order drafter (BUY/SELL/HOLD logic)
 │
-└── frontend/                 # Streamlit dashboard (see Frontend section)
-    └── app.py
+├── streamlit_app.py          # Streamlit entry point (run this)
+└── st_pages/                 # Streamlit page modules
+    ├── dashboard.py          # Sentiment dashboard + orders
+    ├── chat.py               # AI chatbot page
+    └── settings.py           # Tickers, portfolio & risk config
 ```
 
 ---
@@ -209,7 +212,7 @@ python main.py --tickers AAPL,TSLA,NVDA --output results.json
 ### Running the Dashboard
 
 ```bash
-streamlit run frontend/app.py
+streamlit run streamlit_app.py
 ```
 
 ### Dashboard Features

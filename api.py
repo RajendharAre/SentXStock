@@ -1,20 +1,12 @@
 """
-Unified API layer for the Streamlit frontend.
-Provides all the functions needed for both automated dashboard and user interactions.
+Unified API layer — bridges the React frontend (via Flask) to the Python backend.
 
-Usage in Streamlit:
+Usage:
     from api import TradingAPI
     api = TradingAPI()
-    
-    # Auto mode
-    result = api.run_analysis()
-    
-    # User interaction
     api.set_user_tickers(["AAPL", "TSLA", "NVDA"])
     api.set_user_portfolio(cash=50000, risk="Moderate")
     result = api.run_analysis()
-    
-    # Chatbot
     response = api.chat("Should I buy Tesla?")
 """
 
@@ -90,6 +82,9 @@ class TradingAPI:
             "conservative": "Low",
             "moderate": "Medium",
             "aggressive": "High",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
         }
         risk_level = risk_map.get(risk.lower(), "Medium")
 
@@ -110,10 +105,12 @@ class TradingAPI:
 
     def get_settings(self) -> dict:
         """Get current user settings."""
+        # Map internal risk level back to lowercase for frontend
+        risk_map = {"Low": "low", "Medium": "medium", "High": "high"}
         return {
             "tickers": self._tickers,
             "cash": self._cash,
-            "risk_preference": self._risk_preference,
+            "risk_preference": risk_map.get(self._risk_preference, "medium"),
         }
 
     # ─── Analysis ────────────────────────────────────────────
@@ -246,24 +243,32 @@ class TradingAPI:
     def get_dashboard_data(self) -> dict:
         """
         Get all data needed for the dashboard in one call.
-        Combines latest analysis + settings + chat history.
+        Returns a flat shape matching what the React Dashboard expects.
         """
         result = self._latest_result or {}
+        details = result.get("analysis_details", {})
+        snapshot = result.get("portfolio_snapshot", {})
+        risk_map = {"Low": "low", "Medium": "medium", "High": "high"}
 
         return {
-            "has_data": self._initialized,
-            "settings": self.get_settings(),
+            "status": "ok" if self._initialized else "empty",
+            "tickers": self._tickers,
+            "cash": self._cash,
+            "risk_preference": risk_map.get(
+                result.get("new_risk_level", self._risk_preference), "medium"
+            ),
             "sentiment": {
-                "overall": result.get("overall_sentiment", "N/A"),
                 "score": result.get("sentiment_score", 0),
-                "level": self._score_to_label(result.get("sentiment_score", 0)),
+                "label": result.get("overall_sentiment", "N/A"),
+                "total_headlines": details.get("total_items_analyzed", 0),
+                "positive": details.get("bullish_count", 0),
+                "negative": details.get("bearish_count", 0),
+                "neutral": details.get("neutral_count", 0),
             },
-            "risk_level": result.get("new_risk_level", self._risk_preference),
-            "portfolio": result.get("portfolio_snapshot", {}),
+            "allocation": snapshot,
             "orders": result.get("orders", []),
-            "analysis": result.get("analysis_details", {}),
+            "ticker_sentiments": {},
             "timestamp": result.get("timestamp", "Never"),
-            "chat_history": self.get_chat_history(),
         }
 
     @staticmethod
