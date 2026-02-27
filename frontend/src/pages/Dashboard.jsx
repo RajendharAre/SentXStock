@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshCw,
   Loader2,
@@ -11,7 +11,7 @@ import SentimentGauge from '../components/SentimentGauge';
 import RiskLevel from '../components/RiskLevel';
 import PortfolioChart from '../components/PortfolioChart';
 import OrderCards from '../components/OrderCards';
-import { getDashboard, runAnalysis } from '../services/api';
+import { getDashboard, runAnalysis, analyzeStatus } from '../services/api';
 
 function StatCell({ label, value, sub, color }) {
   return (
@@ -30,6 +30,12 @@ function StatCell({ label, value, sub, color }) {
 export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing, setIsAnalyzing, settingsChangedAt }) {
   const [error, setError] = useState(null);
   const [ts, setTs] = useState(null);
+  const [progress, setProgress] = useState('');
+  const pollRef = useRef(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -44,21 +50,46 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
+  // Clean up poll on unmount
+  useEffect(() => () => stopPolling(), []);
+
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setError(null);
+    setProgress('Starting pipeline…');
+    stopPolling();
     try {
-      const res = await runAnalysis();
-      if (res.data?.status === 'ok') {
-        setTimeout(async () => { await fetchDashboard(); setIsAnalyzing(false); }, 1000);
-      } else {
-        setError(res.data?.message || 'Analysis failed');
-        setIsAnalyzing(false);
-      }
+      await runAnalysis();
     } catch (err) {
-      setError(err.response?.data?.message || 'Analysis request failed');
+      setError(err.response?.data?.message || 'Could not reach the API server');
       setIsAnalyzing(false);
+      setProgress('');
+      return;
     }
+    // Poll status every 2.5s until complete or error
+    pollRef.current = setInterval(async () => {
+      try {
+        const s = await analyzeStatus();
+        const { status, progress: prog, error: errMsg } = s.data;
+        if (prog) setProgress(prog);
+        if (status === 'complete') {
+          stopPolling();
+          await fetchDashboard();
+          setIsAnalyzing(false);
+          setProgress('');
+        } else if (status === 'error') {
+          stopPolling();
+          setError(errMsg || 'Analysis failed');
+          setIsAnalyzing(false);
+          setProgress('');
+        }
+      } catch {
+        stopPolling();
+        setError('Lost connection to API server');
+        setIsAnalyzing(false);
+        setProgress('');
+      }
+    }, 2500);
   };
 
   const d = dashboardData;
@@ -69,7 +100,7 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
     return (
       <div className="flex flex-col items-center justify-center gap-4 pt-32">
         <Loader2 className="w-7 h-7 text-[#2563eb] animate-spin" />
-        <p className="text-[13px] text-[#4b5563]">Running sentiment pipeline…</p>
+        <p className="text-[13px] text-[#4b5563]">{progress || 'Running sentiment pipeline…'}</p>
         <div className="flex gap-3 mt-2">
           {['FinBERT', 'Gemini', 'NewsAPI', 'Reddit'].map((s) => (
             <span key={s} className="text-[10px] px-2 py-1 rounded bg-[#0d1320] text-[#374151] border border-[#151d2e]">
