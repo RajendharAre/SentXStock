@@ -27,3 +27,11 @@ Thumbs.db
 
 # Test scripts
 test_*.py
+
+# Datasets — track folder structure but not large CSV files
+datasets/prices/*.csv
+datasets/sentiment/*.csv
+
+# Backtest cache (parquet) and saved results
+backtest/cache/
+backtest/results/*.json

@@ -49,6 +49,92 @@ def health():
     return jsonify({"status": "ok", "message": "SentXStock API is running"})
 
 
+# ─── Indian Company Universe ───────────────────────────────────
+
+@app.route("/api/companies/search", methods=["GET"])
+def search_companies():
+    """
+    Search Indian NSE companies by name or ticker.
+    ?q=<query>&sector=<sector>
+
+    - If q is empty and sector is given → return all companies in that sector
+    - If q is provided → text search, optionally filtered by sector
+    - Returns: { results: [...], total: N, sector: str, query: str }
+    """
+    from backtest.universe_india import IndiaUniverse
+    q      = request.args.get("q", "").strip()
+    sector = request.args.get("sector", "").strip()
+
+    u = IndiaUniverse()
+
+    if not q and sector:
+        # Browse mode: return all companies in a sector (sorted by name)
+        companies = u.browse_sector(sector)
+    elif not q:
+        # No query and no sector → return empty so search box stays clean
+        return jsonify({"results": [], "total": 0, "sector": sector, "query": q})
+    else:
+        # Text search with optional sector filter
+        companies = u.search(q, sector=sector)
+
+    return jsonify({
+        "results": companies,
+        "total":   len(companies),
+        "sector":  sector,
+        "query":   q,
+    })
+
+
+@app.route("/api/companies/sectors", methods=["GET"])
+def get_sectors():
+    """List all sector names with company count."""
+    from backtest.universe_india import IndiaUniverse
+    u = IndiaUniverse()
+    sector_names = u.sectors()
+    counts = {s: 0 for s in sector_names}
+    for stock in u.stocks:
+        counts[stock["sector"]] = counts.get(stock["sector"], 0) + 1
+    return jsonify({
+        "sectors": sector_names,
+        "counts":  counts,
+    })
+
+
+@app.route("/api/companies/by-sector/<sector>", methods=["GET"])
+def companies_by_sector(sector: str):
+    """Return all companies in a given sector."""
+    from backtest.universe_india import IndiaUniverse
+    u = IndiaUniverse()
+    stocks = [s for s in u.stocks if s["sector"].lower() == sector.lower()]
+    return jsonify(stocks)
+
+
+@app.route("/api/companies/all", methods=["GET"])
+def get_all_companies():
+    """Return all 500 NSE companies (ticker, name, sector)."""
+    from backtest.universe_india import IndiaUniverse
+    return jsonify(IndiaUniverse().stocks)
+
+
+@app.route("/api/companies/info/<ticker>", methods=["GET"])
+def company_info(ticker: str):
+    """Return metadata for a single ticker."""
+    from backtest.universe_india import IndiaUniverse, normalise_ticker
+    t = normalise_ticker(ticker)
+    u = IndiaUniverse()
+    info = u.info(t)
+    if info is None:
+        # Not in universe — still return basic info
+        return jsonify({
+            "ticker":    t,
+            "name":      t.replace(".NS", ""),
+            "sector":    "Unknown",
+            "in_universe": False,
+        })
+    info["in_universe"] = True
+    return jsonify(info)
+
+
 # ─── User Settings ────────────────────────────────────────────
 
 @app.route("/api/settings", methods=["GET"])
@@ -127,6 +213,14 @@ def get_latest_result():
 def get_dashboard():
     """Get all dashboard data in one call."""
     return jsonify(trading_api.get_dashboard_data())
+
+
+# ─── Portfolio Allocations ────────────────────────────────────
+
+@app.route("/api/portfolio/allocations", methods=["GET"])
+def get_portfolio_allocations():
+    """Return INR-denominated per-ticker allocation plan."""
+    return jsonify(trading_api.get_portfolio_allocations())
 
 
 # ─── Chatbot ──────────────────────────────────────────────────
@@ -283,6 +377,61 @@ def delete_backtest_result(run_id: str):
     from backtest.report import delete_result
     deleted = delete_result(run_id)
     return jsonify({"deleted": deleted})
+
+
+@app.route("/api/backtest/run-ticker", methods=["POST"])
+def start_backtest_for_ticker():
+    """
+    Silent auto-backtest for a single NSE ticker using Indian market defaults.
+    Called automatically by the Dashboard when a company is selected.
+    User never sees this — result is injected as a Performance Summary card.
+    """
+    global _bt_job
+    data   = request.get_json() or {}
+    ticker = data.get("ticker", "").strip()
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+
+    # Read user capital + risk preference from current settings
+    try:
+        settings = trading_api.get_settings()
+        capital  = float(settings.get("cash", 50_000))
+        risk     = settings.get("risk_preference", "Medium")
+    except Exception:
+        capital = 50_000.0
+        risk    = "Medium"
+
+    params = {
+        "tickers":            [ticker],
+        "start":              "2023-01-31",
+        "end":                "2026-01-31",
+        "benchmark_ticker":   "^NSEI",
+        "initial_capital":    capital,
+        "risk_level":         risk,
+        "strategy_variant":   "threshold",
+        "sentiment_mode":     "price_momentum",
+        "buy_threshold":      0.10,
+        "sell_threshold":    -0.10,
+        "max_position_pct":   0.20,
+        "slippage_bps":       5.0,
+        "allow_shorts":       False,
+        "max_open_positions": 5,
+        "save_results":       True,
+    }
+
+    with _bt_job_lock:
+        if _bt_job["status"] == "running":
+            # A backtest is already running — client can poll /api/backtest/status
+            return jsonify({"status": "running", "message": "Already in progress"})
+        _bt_job["status"]   = "running"
+        _bt_job["progress"] = "Queued…"
+        _bt_job["error"]    = None
+        _bt_job["run_id"]   = None
+        _bt_job.pop("result", None)
+
+    t = threading.Thread(target=_run_backtest_bg, args=(params,), daemon=True)
+    t.start()
+    return jsonify({"status": "started"})
 
 
 # ─── Run Server ───────────────────────────────────────────────

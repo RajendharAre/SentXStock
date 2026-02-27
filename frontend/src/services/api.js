@@ -11,6 +11,18 @@ const api = axios.create({
 // ─── Health ──────────────────────────────────────────────────
 export const checkHealth = () => api.get('/health');
 
+// ─── Indian Company Universe ──────────────────────────────────
+export const searchCompanies    = (q, sector = '') => {
+  const params = new URLSearchParams();
+  if (q)      params.set('q', q);
+  if (sector) params.set('sector', sector);
+  return api.get(`/companies/search?${params.toString()}`);
+};
+export const getSectors         = ()       => api.get('/companies/sectors');
+export const getCompaniesBySector = (s)   => api.get(`/companies/by-sector/${encodeURIComponent(s)}`);
+export const getAllCompanies     = ()       => api.get('/companies/all');
+export const getCompanyInfo     = (ticker) => api.get(`/companies/info/${ticker}`);
+
 // ─── Settings ────────────────────────────────────────────────
 export const getSettings = () => api.get('/settings');
 export const setTickers = (tickers) => api.post('/settings/tickers', { tickers });
@@ -25,13 +37,15 @@ export const getLatestResult = () => api.get('/result');
 // ─── Dashboard ───────────────────────────────────────────────
 export const getDashboard = () => api.get('/dashboard');
 
+// ─── Portfolio Allocations ────────────────────────────────────
+export const getPortfolioAllocations = () => api.get('/portfolio/allocations');
+
 // ─── Chatbot ─────────────────────────────────────────────────
 export const sendChat = (question) => api.post('/chat', { question });
 export const getChatHistory = () => api.get('/chat/history');
 export const clearChat = () => api.post('/chat/clear');
 // ─── Backtesting ──────────────────────────────────────────────────────────────
-export const startBacktest          = (params) => api.post('/backtest/run', params);
-export const backtestStatus         = ()        => api.get('/backtest/status');
+export const startBacktest          = (params) => api.post('/backtest/run', params);export const startBacktestForTicker = (ticker) => api.post('/backtest/run-ticker', { ticker });export const backtestStatus         = ()        => api.get('/backtest/status');
 export const backtestLatestResult   = ()        => api.get('/backtest/latest');
 export const listBacktestResults    = ()        => api.get('/backtest/results');
 export const loadBacktestResult     = (runId)   => api.get(`/backtest/result/${runId}`);

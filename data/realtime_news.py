@@ -56,7 +56,7 @@ def fetch_company_news(ticker: str, days_back: int = 7) -> list[dict]:
     Fetch company-specific news from Finnhub.
     
     Args:
-        ticker: Stock symbol (e.g., 'AAPL')
+        ticker: Stock symbol (e.g., 'AAPL' or 'TCS.NS')
         days_back: How many days back to fetch news
     
     Returns:
@@ -65,6 +65,14 @@ def fetch_company_news(ticker: str, days_back: int = 7) -> list[dict]:
     if not FINNHUB_API_KEY:
         return []
 
+    # Finnhub uses NSE:TCS format for Indian stocks, not TCS.NS
+    if ticker.endswith(".NS"):
+        finnhub_symbol = "NSE:" + ticker[:-3]
+    elif ticker.endswith(".BO") or ticker.endswith(".BSE"):
+        finnhub_symbol = "BSE:" + ticker.split(".")[0]
+    else:
+        finnhub_symbol = ticker
+
     try:
         today = datetime.now()
         from_date = (today - timedelta(days=days_back)).strftime("%Y-%m-%d")
@@ -72,7 +80,7 @@ def fetch_company_news(ticker: str, days_back: int = 7) -> list[dict]:
 
         url = f"{FINNHUB_BASE_URL}/company-news"
         params = {
-            "symbol": ticker,
+            "symbol": finnhub_symbol,
             "from": from_date,
             "to": to_date,
             "token": FINNHUB_API_KEY,
@@ -157,14 +165,15 @@ def fetch_newsapi_headlines(country: str = "us", category: str = "business", max
         return []
 
 
-def fetch_newsapi_for_ticker(ticker: str, days_back: int = 3, max_items: int = 10) -> list[dict]:
+def fetch_newsapi_for_ticker(ticker: str, days_back: int = 3, max_items: int = 10, company_name: str = "") -> list[dict]:
     """
     Fetch news articles about a specific ticker/company from NewsAPI.
     
     Args:
-        ticker: Stock symbol (e.g., 'AAPL')
+        ticker: Stock symbol (e.g., 'AAPL' or 'TCS.NS')
         days_back: How many days back to search
         max_items: Max articles to return
+        company_name: Full company name for better search (especially for NSE stocks)
     
     Returns:
         List of news dicts for the specific ticker
@@ -172,8 +181,11 @@ def fetch_newsapi_for_ticker(ticker: str, days_back: int = 3, max_items: int = 1
     if not NEWSAPI_KEY:
         return []
 
+    # Strip exchange suffixes for clean symbol
+    base = ticker.replace(".NS", "").replace(".BO", "").replace(".BSE", "")
+
     # Map common tickers to company names for better search results
-    ticker_to_name = {
+    us_ticker_map = {
         "AAPL": "Apple",
         "GOOGL": "Google OR Alphabet",
         "MSFT": "Microsoft",
@@ -184,7 +196,24 @@ def fetch_newsapi_for_ticker(ticker: str, days_back: int = 3, max_items: int = 1
         "SPY": "S&P 500",
         "TLT": "Treasury bonds",
     }
-    query = ticker_to_name.get(ticker, ticker)
+
+    if company_name:
+        # Use the company name for NSE/BSE stocks — much better recall
+        # e.g. "Tata Consultancy Services" stock NSE India
+        query = f'"{company_name}" stock'
+    elif base in us_ticker_map:
+        query = us_ticker_map[base]
+    else:
+        # Generic fallback: try company name from universe if available
+        try:
+            from backtest.universe_india import IndiaUniverse
+            name = IndiaUniverse().name(ticker)
+            if name and name != ticker:
+                query = f'"{name}" stock'
+            else:
+                query = f"{base} stock India"
+        except Exception:
+            query = f"{base} stock"
 
     try:
         from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")

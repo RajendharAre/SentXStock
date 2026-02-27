@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Settings, Sun, Moon, FlaskConical } from 'lucide-react';
+import { Home, LayoutDashboard, Bot, Users, Settings, Sun, Moon, PieChart } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar() {
@@ -7,17 +7,19 @@ export default function Navbar() {
   const { theme, toggle } = useTheme();
 
   const links = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/chat', label: 'Chat', icon: MessageSquare },
-    { to: '/backtest', label: 'Backtest', icon: FlaskConical },
-    { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/',           label: 'Home',           icon: Home },
+    { to: '/dashboard',  label: 'Dashboard',      icon: LayoutDashboard },
+    { to: '/portfolio',  label: 'Portfolio',      icon: PieChart },
+    { to: '/chat',       label: 'AI Advisor',     icon: Bot },
+    { to: '/consult',    label: 'Consult Expert', icon: Users },
+    { to: '/settings',   label: 'Settings',       icon: Settings },
   ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--c-border)] bg-[var(--c-bg)] backdrop-blur-sm transition-colors">
       <div className="max-w-[1360px] mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Home">
           <div className="w-7 h-7 rounded-md bg-[#2563eb] flex items-center justify-center">
             <span className="text-white text-xs font-extrabold leading-none">SX</span>
           </div>

@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import Portfolio from './pages/Portfolio';
 import Chat from './pages/Chat';
+import Consult from './pages/Consult';
 import Settings from './pages/Settings';
 import Backtest from './pages/Backtest';
 
@@ -25,8 +28,9 @@ export default function App() {
           <Navbar />
           <main className="flex-1 w-full max-w-[1360px] mx-auto px-5 sm:px-8 py-5">
             <Routes>
+              <Route path="/" element={<Home />} />
               <Route
-                path="/"
+                path="/dashboard"
                 element={
                   <Dashboard
                     dashboardData={dashboardData}
@@ -37,7 +41,9 @@ export default function App() {
                   />
                 }
               />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/chat" element={<Chat />} />
+              <Route path="/consult" element={<Consult />} />
               <Route path="/settings" element={<Settings onSaved={handleSettingsSaved} />} />
               <Route path="/backtest" element={<Backtest />} />
             </Routes>

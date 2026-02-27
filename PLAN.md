@@ -1,6 +1,261 @@
-# Sentiment Trading Agent - Project Plan
+# SentXStock — Indian Market Sentiment Trading Platform
+## Development Progress Tracker
 
-## Timeline: 12 Hours Hackathon
+> **Project:** NAAC Hackathon 2026 — SentXStock Indian Edition
+> **Stack:** Python Flask + React Vite + Tailwind + FinBERT + Gemini
+> **Market:** Indian equities (NSE — `.NS` tickers via yfinance)
+> **Currency:** INR only
+> **Last Updated:** 2026-02-27
+
+---
+
+## Module Progress
+
+| # | Module | Status | Notes |
+|---|--------|--------|-------|
+| 1 | Indian Universe + Data Foundation | Complete | 500 NSE companies, 11 sectors |
+| 2 | Home Page | **Complete** | Home.jsx — 8 sections, no emojis, Lucide icons |
+| 3 | Navbar + Routing | **Complete** | Home, Dashboard, AI Advisor, Consult Expert, Settings |
+| 4 | Dashboard Overhaul | **Complete** | Company search, per-company analysis panel, sector filter |
+| 5 | Hidden Auto-Backtest | Pending | Auto-triggered on company select |
+| 6 | Settings Page + Admin | Pending | Dark/light/system, admin credentials |
+| 7 | Chat Enhancement | Pending | Gemini → fallback structured output |
+| 8 | PDF Report | Pending | Full portfolio download |
+| 9 | Risk + Portfolio Engine | Pending | INR-denominated, dynamic allocation |
+
+**Rule:** One module at a time. Mark complete. Do NOT push to GitHub. Wait for confirmation.
+
+---
+
+## Module 1 — Indian Universe + Data Foundation
+
+### Completed
+- [x] `backtest/universe_india.py` — 500 Indian NSE companies across 11 sectors
+- [x] `scripts/download_india_datasets.py` — Download 5-year OHLCV CSVs for all NSE tickers
+- [x] Updated PLAN.md
+
+### Data Architecture
+```
+datasets/
+  prices/
+    TCS.NS.csv          # OHLCV, yfinance auto_adjust=True
+    INFY.NS.csv
+    ...
+  sentiment/
+    TCS.NS.csv          # Date, sentiment_score (derived)
+    ...
+backtest/
+  cache/prices/         # Parquet cache (fast re-runs)
+  results/              # Saved backtest JSON files
+```
+
+### Loading Priority (data_loader.py)
+```
+1. datasets/prices/<TICKER>.csv   ← local CSV (offline, fast)
+2. backtest/cache/prices/*.parquet ← parquet cache
+3. yfinance live download          ← fallback
+```
+
+### Ticker Format
+- All NSE tickers: `RELIANCE.NS`, `TCS.NS`, `INFY.NS`
+- Benchmark: `^NSEI` (Nifty 50)
+- Currency: INR throughout
+
+### Sector Map
+| Sector | Count | Example Tickers |
+|--------|-------|-----------------|
+| Technology | 45 | TCS.NS, INFY.NS, WIPRO.NS |
+| Banking & Finance | 80 | HDFCBANK.NS, ICICIBANK.NS, SBIN.NS |
+| FMCG | 40 | HINDUNILVR.NS, ITC.NS, NESTLEIND.NS |
+| Healthcare | 45 | SUNPHARMA.NS, DRREDDY.NS, CIPLA.NS |
+| Energy & Oil | 35 | RELIANCE.NS, ONGC.NS, NTPC.NS |
+| Infrastructure | 30 | LT.NS, ULTRACEMCO.NS, DLF.NS |
+| Automobile | 40 | MARUTI.NS, TATAMOTORS.NS, M&M.NS |
+| Metals & Mining | 30 | TATASTEEL.NS, JSWSTEEL.NS, HINDALCO.NS |
+| Telecom & Media | 20 | BHARTIARTL.NS, IDEA.NS |
+| Consumer Discretionary | 35 | TITAN.NS, ASIANPAINT.NS |
+| Conglomerates | 20 | ADANIENT.NS, ADANIPORTS.NS |
+
+---
+
+## Module 2 — Home Page (Complete)
+
+### Completed
+- [x] Hero section — platform name, tagline, 2 CTAs, disclaimer ribbon
+- [x] How It Works — 5-step process with Lucide icons
+- [x] Platform Capabilities — 6 feature cards (2-col/3-col grid)
+- [x] Strategy Explanation — signal weights, thresholds, risk multipliers, backtest params
+- [x] Performance Statistics — 6 platform coverage stats
+- [x] Supported Sectors — all 11 NSE sectors with company counts
+- [x] FAQ Accordion — 8 expandable Q&A items (no emojis, Lucide icons)
+- [x] CTA Footer Strip
+
+---
+
+## Module 3 — Navbar + Routing (Complete)
+
+### Completed
+- [x] `/` → Home (new landing page)
+- [x] `/dashboard` → Dashboard (company select + analysis)
+- [x] `/settings` → Settings
+- [x] `/chat` → AI Advisor (Gemini AI chat, labelled correctly)
+- [x] `/consult` → Consult Expert (NEW — real human SEBI-registered advisor booking page)
+- [x] `/backtest` → Backtest (route kept, hidden from nav)
+- [x] Navbar links: Home, Dashboard, AI Advisor, Consult Expert, Settings
+- [x] Removed Backtest from nav — runs silently in background
+- [x] Brand logo still links to `/`
+
+---
+
+## Module 4 — Dashboard Overhaul (Complete)
+
+### Completed
+- [x] Sector dropdown filter (11 NSE sectors from API)
+- [x] Company search box with 250ms debounced autocomplete (500 NSE companies)
+- [x] Live results dropdown — shows name, ticker, sector
+- [x] On company select → `analyzeTicker()` fires with loading state
+- [x] Company header — name, ticker badge, exchange badge, sector badge
+- [x] Sentiment score gauge bar (-1 to +1 visual with marker)
+- [x] Sentiment breakdown bars (Bullish / Bearish / Neutral with % and count)
+- [x] Recommendation badge (Strong Buy / Buy / Hold / Sell / Strong Sell)
+- [x] Confidence percentage display
+- [x] AI-generated explanation text field
+- [x] Risk level panel (Low / Medium / High — active state highlighted)
+- [x] Portfolio allocation panel (suggested amount in INR, position size %)
+- [x] Order signals table (BUY/SELL/HOLD per order)
+- [x] Key Financial Metrics grid (P/E, P/B, Market Cap, 52W High/Low, Volume)
+- [x] News table with per-article sentiment badge and score
+- [x] Legacy portfolio overview preserved for global getDashboard() data
+- [x] Empty state with "Run Portfolio Analysis" button
+
+---
+
+## Module 5 — Hidden Auto-Backtest (Complete)
+
+### Behavior
+- [ ] Company selected → `POST /api/backtest/run` fires silently
+- [ ] Background polling — user never sees raw backtest UI
+- [ ] Result injected into dashboard as "Performance Summary"
+- [ ] Date range: 3 years ending January 2026
+- [ ] Exported metrics only: Strategy Return, Max Drawdown, Risk-Adjusted Return, Win Rate
+
+---
+
+## Module 6 — Settings Page + Admin (Complete)
+
+### Settings Sections
+- [ ] Appearance: Dark / Light / System mode selector
+- [ ] Portfolio: Cash (INR default 50000), Risk preference
+- [ ] Data: Mock Mode toggle, Update Data button
+- [ ] Admin login section
+
+### Admin Credentials (demo only)
+- Username: `admin_sentxstock`
+- Password: `Admin@33*`
+- [ ] Admin features: CSV dataset upload, company list management
+- [ ] Non-admin users cannot access admin area regardless of attempts
+
+---
+
+## Module 7 — Chat Enhancement (Complete)
+
+### Response Priority Flow
+1. Gemini API (primary)
+2. If quota exceeded: FinBERT sentiment + structured metrics table
+3. If no data: curated article links + financial source references
+
+### UI Formatting Requirements
+- [ ] Markdown rendering inside chat bubbles
+- [ ] Tables for metrics comparison
+- [ ] Clickable external links
+- [ ] Clear headings / subheadings
+
+---
+
+## Module 8 — PDF Report (Complete)
+
+### PDF Contents
+- [ ] Company summary header
+- [ ] Sentiment score + trend visualization
+- [ ] 3-year backtest performance summary
+- [ ] Recommendation + confidence
+- [ ] Risk allocation table
+- [ ] Timestamp + disclaimer footer
+
+### Implementation
+- [ ] `jsPDF` + `html2canvas` (client-side generation)
+- [ ] Triggered from "Download Report" button on Dashboard
+
+---
+
+## Module 9 — Risk + Portfolio Engine (Complete)
+
+### INR-Denominated Logic
+- [x] Default capital: 50000 INR
+- [x] Per-stock allocation: `confidence × risk_multiplier × (1 / n_positions)`
+- [x] Maximum single position: 20% of total portfolio
+- [x] Dynamic rebalancing when sentiment shifts > threshold
+
+### Implementation
+- `api.py` → `get_portfolio_allocations()` — server-side allocation engine
+- `server.py` → `GET /api/portfolio/allocations` — new Flask route
+- `frontend/src/services/api.js` → `getPortfolioAllocations()`
+- `frontend/src/pages/Portfolio.jsx` — full portfolio page with PieChart + allocation cards
+- `frontend/src/components/Navbar.jsx` — Portfolio nav item (PieChart icon)
+- `frontend/src/App.jsx` → `/portfolio` route added
+
+---
+
+## Technical Architecture
+
+```
+server.py (Flask)
+├── /api/analyze         ← sentiment pipeline
+├── /api/analyze/status  ← polling
+├── /api/dashboard       ← all dashboard data
+├── /api/backtest/run    ← hidden auto-backtest
+├── /api/backtest/status ← background polling
+├── /api/company/search  ← company search (Module 4)
+├── /api/company/info    ← company metadata
+└── /api/settings        ← user settings
+
+backtest/
+├── universe_india.py    ← 500 NSE tickers (Module 1)
+├── universe.py          ← S&P 500 (kept for reference)
+├── data_loader.py       ← CSV → parquet → yfinance
+├── engine.py            ← walk-forward simulation
+├── strategy.py          ← signal generation
+├── metrics.py           ← Sharpe, drawdown, etc.
+├── report.py            ← JSON persistence
+└── runner.py            ← single entry point
+
+frontend/src/
+├── pages/
+│   ├── Home.jsx         ← Module 2
+│   ├── Dashboard.jsx    ← Module 4 (overhaul)
+│   ├── Settings.jsx     ← Module 6 (overhaul)
+│   ├── Consult.jsx      ← Module 3
+│   └── Chat.jsx
+├── components/
+│   ├── Navbar.jsx       ← Module 3
+│   ├── CompanySearch.jsx
+│   ├── SentimentGauge.jsx
+│   ├── RecommendationBadge.jsx
+│   └── PdfReportButton.jsx  ← Module 8
+└── services/api.js
+```
+
+---
+
+## Development Rules
+
+1. Implement one module at a time
+2. Update this file with completed checkboxes after each task
+3. **Do NOT push to GitHub without user confirmation**
+4. No hardcoded ticker logic anywhere
+5. No emojis in UI — Lucide React icons only
+6. All monetary values in INR
+
 
 ---
 

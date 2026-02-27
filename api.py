@@ -160,67 +160,194 @@ class TradingAPI:
     def analyze_ticker(self, ticker: str) -> dict:
         """
         Get detailed sentiment analysis for a specific ticker.
-        
-        Args:
-            ticker: Stock symbol (e.g., 'AAPL')
-        
-        Returns:
-            Detailed sentiment breakdown for the ticker
+        Returns a shape that exactly matches what the React AnalysisPanel expects.
         """
         from data.realtime_news import fetch_company_news, fetch_newsapi_for_ticker
         from sentiment.analyzer import SentimentAnalyzer
+        from backtest.universe_india import IndiaUniverse, normalise_ticker
 
-        ticker = ticker.strip().upper()
+        ticker = normalise_ticker(ticker.strip().upper())
 
-        # Fetch ticker-specific news
-        news = fetch_company_news(ticker, days_back=3)
-        newsapi_news = fetch_newsapi_for_ticker(ticker, days_back=3, max_items=15)
-        news.extend(newsapi_news)
+        # ── 1. Look up company metadata from universe ──────────────────────
+        u = IndiaUniverse()
+        company_info = u.info(ticker) or {}
+        company_name = company_info.get("name", ticker.replace(".NS", "").replace(".BO", ""))
+        sector       = company_info.get("sector", "Unknown")
+        exchange     = "NSE" if ticker.endswith(".NS") else "BSE" if ticker.endswith(".BO") else "NSE"
 
-        if not news:
-            return {
-                "ticker": ticker,
-                "error": f"No recent news found for {ticker}",
-                "recommendation": "HOLD — insufficient data for analysis",
+        # ── 2. Fetch news (pass company name for better NewsAPI search) ────
+        news_raw = fetch_company_news(ticker, days_back=5)
+        newsapi_raw = fetch_newsapi_for_ticker(
+            ticker, days_back=5, max_items=20, company_name=company_name
+        )
+        all_news_raw = news_raw + newsapi_raw
+
+        # De-duplicate by headline text
+        seen: set = set()
+        unique_news: list = []
+        for n in all_news_raw:
+            h = (n.get("headline") or n.get("title") or "").strip().lower()
+            if h and h not in seen:
+                seen.add(h)
+                unique_news.append(n)
+
+        # ── Fallback to mock data if no real news found ────────────────────
+        is_mock = False
+        if not unique_news:
+            from data.mock_news import get_mock_news_for_company
+            unique_news = get_mock_news_for_company(ticker, company_name, sector, n=10)
+            is_mock = True
+
+        # ── 3. Sentiment analysis ──────────────────────────────────────────
+        if unique_news:
+            analyzer = SentimentAnalyzer()
+            results  = analyzer.analyze_news(unique_news)
+            agg      = analyzer.get_aggregate(results, [])
+        else:
+            # This branch is a safety net — normally mock data covers this
+            results = []
+            agg = {
+                "overall_sentiment": "Neutral",
+                "sentiment_score":   0.0,
+                "total_analyzed":    0,
+                "bullish_count":     0,
+                "bearish_count":     0,
+                "neutral_count":     0,
+                "individual_results": [],
             }
 
-        # Analyze sentiment
-        analyzer = SentimentAnalyzer()
-        results = analyzer.analyze_news(news)
-        aggregate = analyzer.get_aggregate(results, [])
+        # ── 4. Build per-article news list for frontend ────────────────────
+        indiv = agg.get("individual_results", results)
 
-        # Generate recommendation
-        score = aggregate["sentiment_score"]
+        news_out: list[dict] = []
+        for i, item in enumerate(unique_news[:20]):
+            art_result = indiv[i] if i < len(indiv) else {}
+            art_score  = art_result.get("score", 0.0)
+            art_sent   = art_result.get("sentiment",
+                         "Bullish" if art_score > 0.05 else "Bearish" if art_score < -0.05 else "Neutral")
+            news_out.append({
+                "title":      item.get("headline") or item.get("title") or "Untitled",
+                "source":     item.get("source", "Unknown"),
+                "url":        item.get("url", ""),
+                "score":      round(float(art_score), 4),
+                "sentiment":  art_sent,
+                "timestamp":  item.get("timestamp", ""),
+            })
+
+        # ── 5. Core metrics ────────────────────────────────────────────────
+        score    = float(agg.get("sentiment_score", 0.0))
+        label    = agg.get("overall_sentiment", "Neutral")
+        bull     = int(agg.get("bullish_count", 0))
+        bear     = int(agg.get("bearish_count", 0))
+        flat     = int(agg.get("neutral_count", 0))
+        total_hl = int(agg.get("total_analyzed", 0))
+
+        # ── 6. Recommendation ──────────────────────────────────────────────
         if score >= 0.3:
-            recommendation = f"BUY — Bullish sentiment ({score:.2f}) based on {len(results)} articles"
+            rec_str = "STRONG BUY"
+        elif score >= 0.1:
+            rec_str = "BUY"
         elif score <= -0.3:
-            recommendation = f"SELL — Bearish sentiment ({score:.2f}) based on {len(results)} articles"
+            rec_str = "STRONG SELL"
+        elif score <= -0.1:
+            rec_str = "SELL"
         else:
-            recommendation = f"HOLD — Neutral sentiment ({score:.2f}) based on {len(results)} articles"
+            rec_str = "HOLD"
 
-        # Get live price
-        import yfinance as yf
+        # ── 7. Confidence ──────────────────────────────────────────────────
+        # Confidence = abs(score) mapped to 50-95% range + bonus for article count
+        base_conf      = min(abs(score) * 150, 45.0)       # 0.0→0%, 0.3→45%
+        article_bonus  = min(total_hl * 1.5, 15.0)         # up to +15% for 10+ articles
+        mock_penalty   = -20.0 if is_mock else 0.0          # penalty when showing simulated data
+        confidence     = round(max(50.0 + base_conf + article_bonus + mock_penalty, 10.0), 1)
+
+        # ── 8. Risk level from user settings ──────────────────────────────
+        risk_level = self._risk_preference.capitalize() if hasattr(self, '_risk_preference') else "Medium"
+
+        # ── 9. Portfolio allocation hint ───────────────────────────────────
         try:
-            stock = yf.Ticker(ticker)
-            price_data = stock.history(period="1d")
-            current_price = round(float(price_data["Close"].iloc[-1]), 2) if not price_data.empty else None
+            capital   = float(self._cash) if hasattr(self, '_cash') else 50000.0
+            n         = max(len(self._tickers), 1) if hasattr(self, '_tickers') else 5
+            risk_mult = {"Low": 0.5, "Medium": 1.0, "High": 1.5}.get(risk_level, 1.0)
+            alloc_pct = min((confidence / 100.0) * risk_mult * (1.0 / n) * 100.0, 20.0)
+            alloc_inr = round(capital * alloc_pct / 100.0, 2)
         except Exception:
-            current_price = None
+            alloc_pct = 0.0
+            alloc_inr = 0.0
 
+        # ── 10. Live price ─────────────────────────────────────────────────
+        current_price = None
+        try:
+            import yfinance as yf
+            stock      = yf.Ticker(ticker)
+            price_data = stock.history(period="1d")
+            if not price_data.empty:
+                current_price = round(float(price_data["Close"].iloc[-1]), 2)
+        except Exception:
+            pass
+
+        # ── 11. AI explanation (build a simple template one) ───────────────
+        if is_mock:
+            explained = (
+                f"Analysis based on {total_hl} simulated news articles for {company_name} "
+                f"(live news APIs returned no results). "
+                f"Sentiment: {label} ({score:+.3f}). "
+                f"{bull} bullish, {bear} bearish, {flat} neutral signals. "
+                f"Note: Connect Finnhub/NewsAPI keys for live data."
+            )
+        else:
+            explained = (
+                f"Based on {total_hl} live articles, {company_name} shows "
+                f"{label.lower()} sentiment (score: {score:+.3f}). "
+                f"{bull} bullish, {bear} bearish, {flat} neutral headlines."
+            )
+
+        # ── Return exactly what the React AnalysisPanel reads ─────────────
         return {
-            "ticker": ticker,
-            "current_price": current_price,
-            "sentiment": aggregate["overall_sentiment"],
-            "sentiment_score": aggregate["sentiment_score"],
-            "recommendation": recommendation,
-            "articles_analyzed": len(results),
-            "bullish_count": aggregate["bullish_count"],
-            "bearish_count": aggregate["bearish_count"],
-            "neutral_count": aggregate["neutral_count"],
-            "top_headlines": [
-                {"headline": n.get("headline", ""), "source": n.get("source", "")}
-                for n in news[:5]
-            ],
+            # Company identity
+            "ticker":       ticker,
+            "name":         company_name,
+            "sector":       sector,
+            "exchange":     exchange,
+
+            # Flat score fields (fallback reads)
+            "score":        score,
+            "label":        label,
+            "bullish":      bull,
+            "bearish":      bear,
+            "neutral":      flat,
+
+            # Structured sentiment object (primary reads)
+            "sentiment": {
+                "score":            score,
+                "label":            label,
+                "positive":         bull,
+                "negative":         bear,
+                "neutral":          flat,
+                "total_headlines":  total_hl,
+            },
+
+            # Recommendation + confidence
+            "recommendation": rec_str,
+            "confidence":     confidence,
+            "explanation":    explained,
+
+            # Risk & allocation
+            "risk_level":  risk_level,
+            "allocation": {
+                "suggested_pct":    round(alloc_pct, 1),
+                "suggested_amount": alloc_inr,
+            },
+
+            # News articles
+            "news": news_out,
+
+            # Price
+            "current_price":    current_price,
+            "articles_analyzed": total_hl,
+            "has_news":          len(unique_news) > 0,
+            "is_mock_data":      is_mock,
+
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -277,6 +404,62 @@ class TradingAPI:
             "orders": result.get("orders", []),
             "ticker_sentiments": {},
             "timestamp": result.get("timestamp", "Never"),
+        }
+
+    def get_portfolio_allocations(self) -> dict:
+        """
+        Compute per-ticker INR allocations using:
+          allocation_pct = confidence × risk_multiplier × (1 / n_positions)
+          capped at 20% max single position.
+        If no analysis has run, confidence defaults to 0.5 (neutral).
+        """
+        risk_mult_map = {"Low": 0.5, "Medium": 1.0, "High": 1.5}
+        rk = risk_mult_map.get(self._risk_preference, 1.0)
+        n = max(len(self._tickers), 1)
+
+        # Pull last known per-ticker sentiment from latest result (if any)
+        ticker_data_map = {}
+        if self._latest_result:
+            for order in self._latest_result.get("orders", []):
+                t = order.get("ticker", "")
+                if t:
+                    ticker_data_map[t] = order
+
+        allocations = []
+        for ticker in self._tickers:
+            tdata = ticker_data_map.get(ticker, {})
+            # confidence: 0–1; default 0.5 if no analysis
+            confidence = abs(tdata.get("confidence", 0.5))
+            sentiment_label = tdata.get("sentiment", "Neutral")
+            score = tdata.get("score", 0.0)
+            recommendation = tdata.get("action", "HOLD")
+
+            raw_pct = confidence * rk * (1.0 / n)
+            capped_pct = min(raw_pct, 0.20)
+            amount = self._cash * capped_pct
+
+            allocations.append({
+                "ticker": ticker,
+                "confidence": round(confidence, 4),
+                "sentiment": sentiment_label,
+                "score": round(score, 4),
+                "recommendation": recommendation,
+                "allocation_pct": round(capped_pct * 100, 2),
+                "allocation_inr": round(amount, 2),
+                "capped": raw_pct > 0.20,
+            })
+
+        total_allocated = sum(a["allocation_inr"] for a in allocations)
+        return {
+            "capital": self._cash,
+            "risk": self._risk_preference.lower(),
+            "risk_multiplier": rk,
+            "n_positions": n,
+            "allocations": allocations,
+            "total_allocated": round(total_allocated, 2),
+            "available_cash": round(self._cash - total_allocated, 2),
+            "has_analysis": self._initialized,
+            "timestamp": self._latest_result.get("timestamp", None) if self._latest_result else None,
         }
 
     @staticmethod
