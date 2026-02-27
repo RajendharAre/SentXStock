@@ -60,38 +60,38 @@ export default function SettingsPage({ onSaved }) {
 
   return (
     <div className="max-w-xl mx-auto space-y-5">
-      <h1 className="text-[18px] font-semibold text-white">Settings</h1>
+      <h1 className="text-[18px] font-semibold text-[var(--c-text)]">Settings</h1>
 
       {/* Tickers */}
       <div className="card p-5 space-y-3">
-        <label className="text-[12px] font-medium text-[#64748b]">Tickers</label>
+        <label className="text-[12px] font-medium text-[var(--c-muted)]">Tickers</label>
         <input
           type="text"
           value={tks}
           onChange={(e) => setTks(e.target.value)}
           placeholder="AAPL, TSLA, MSFT, GOOGL"
-          className="w-full px-3 py-2.5 rounded-md bg-[#080c14] border border-[#151d2e] text-[13px] text-white placeholder-[#2a3344]"
+          className="w-full px-3 py-2.5 rounded-md bg-[var(--c-bg)] border border-[var(--c-border)] text-[13px] text-[var(--c-text)] placeholder-[var(--c-placeholder)]"
         />
-        <p className="text-[11px] text-[#374151]">Comma-separated stock symbols (max 10)</p>
+        <p className="text-[11px] text-[var(--c-dimmer)]">Comma-separated stock symbols (max 10)</p>
       </div>
 
       {/* Cash */}
       <div className="card p-5 space-y-3">
-        <label className="text-[12px] font-medium text-[#64748b]">Portfolio cash</label>
+        <label className="text-[12px] font-medium text-[var(--c-muted)]">Portfolio cash</label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#374151]">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[var(--c-dimmer)]">$</span>
           <input
             type="text"
             value={cash}
             onChange={(e) => setCash(e.target.value.replace(/[^0-9.]/g, ''))}
-            className="w-full pl-7 pr-3 py-2.5 rounded-md bg-[#080c14] border border-[#151d2e] text-[13px] text-white mono placeholder-[#2a3344]"
+            className="w-full pl-7 pr-3 py-2.5 rounded-md bg-[var(--c-bg)] border border-[var(--c-border)] text-[13px] text-[var(--c-text)] mono placeholder-[var(--c-placeholder)]"
           />
         </div>
       </div>
 
       {/* Risk */}
       <div className="card p-5 space-y-3">
-        <label className="text-[12px] font-medium text-[#64748b]">Risk preference</label>
+        <label className="text-[12px] font-medium text-[var(--c-muted)]">Risk preference</label>
         <div className="grid grid-cols-3 gap-2">
           {RISK.map((r) => {
             const Icon = r.icon;
@@ -102,20 +102,20 @@ export default function SettingsPage({ onSaved }) {
                 onClick={() => setRisk(r.val)}
                 className="p-3 rounded-md border text-left transition-colors"
                 style={{
-                  borderColor: on ? `${r.color}50` : '#151d2e',
+                  borderColor: on ? `${r.color}50` : 'var(--c-border)',
                   background: on ? `${r.color}08` : 'transparent',
                 }}
               >
-                <Icon className="w-4 h-4 mb-1.5" style={{ color: on ? r.color : '#374151' }} />
-                <p className="text-[12px] font-semibold" style={{ color: on ? r.color : '#64748b' }}>
+                <Icon className="w-4 h-4 mb-1.5" style={{ color: on ? r.color : 'var(--c-dimmer)' }} />
+                <p className="text-[12px] font-semibold" style={{ color: on ? r.color : 'var(--c-muted)' }}>
                   {r.label}
                 </p>
-                <p className="text-[10px] text-[#374151] mt-0.5 mono">{r.alloc}</p>
+                <p className="text-[10px] text-[var(--c-dimmer)] mt-0.5 mono">{r.alloc}</p>
               </button>
             );
           })}
         </div>
-        <p className="text-[10px] text-[#374151]">Equity / Bonds / Cash percentages</p>
+        <p className="text-[10px] text-[var(--c-dimmer)]">Equity / Bonds / Cash percentages</p>
       </div>
 
       {/* Save button */}

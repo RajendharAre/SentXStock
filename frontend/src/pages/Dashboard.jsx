@@ -16,13 +16,13 @@ import { getDashboard, runAnalysis, analyzeStatus } from '../services/api';
 function StatCell({ label, value, sub, color }) {
   return (
     <div className="px-4 py-3">
-      <span className="text-[10px] font-medium text-[#374151] uppercase tracking-wide block mb-1">
+      <span className="text-[10px] font-medium text-[var(--c-dimmer)] uppercase tracking-wide block mb-1">
         {label}
       </span>
-      <span className={`mono text-lg font-bold leading-none ${color || 'text-white'}`}>
+      <span className={`mono text-lg font-bold leading-none ${color || 'text-[var(--c-text)]'}`}>
         {value}
       </span>
-      {sub && <span className="block text-[10px] text-[#4b5563] mt-1">{sub}</span>}
+      {sub && <span className="block text-[10px] text-[var(--c-dim)] mt-1">{sub}</span>}
     </div>
   );
 }
@@ -100,10 +100,10 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
     return (
       <div className="flex flex-col items-center justify-center gap-4 pt-32">
         <Loader2 className="w-7 h-7 text-[#2563eb] animate-spin" />
-        <p className="text-[13px] text-[#4b5563]">{progress || 'Running sentiment pipeline…'}</p>
+        <p className="text-[13px] text-[var(--c-dim)]">{progress || 'Running sentiment pipeline…'}</p>
         <div className="flex gap-3 mt-2">
           {['FinBERT', 'Gemini', 'NewsAPI', 'Reddit'].map((s) => (
-            <span key={s} className="text-[10px] px-2 py-1 rounded bg-[#0d1320] text-[#374151] border border-[#151d2e]">
+            <span key={s} className="text-[10px] px-2 py-1 rounded bg-[var(--c-surface)] text-[var(--c-dimmer)] border border-[var(--c-border)]">
               {s}
             </span>
           ))}
@@ -125,9 +125,9 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
           </div>
         )}
         <div className="card flex flex-col items-center justify-center py-20 text-center">
-          <Zap className="w-8 h-8 text-[#1e293b] mb-3" />
-          <p className="text-[14px] text-[#64748b] font-medium">No data yet</p>
-          <p className="text-[12px] text-[#374151] mt-1 max-w-xs">
+          <Zap className="w-8 h-8 text-[var(--c-ghost)] mb-3" />
+          <p className="text-[14px] text-[var(--c-muted)] font-medium">No data yet</p>
+          <p className="text-[12px] text-[var(--c-dimmer)] mt-1 max-w-xs">
             Set your tickers in Settings, then hit Run Analysis.
           </p>
         </div>
@@ -154,7 +154,7 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
       {error && <ErrorBanner msg={error} />}
 
       {/* ── Stat strip ────────────────────────────── */}
-      <div className="card grid grid-cols-2 sm:grid-cols-5 divide-x divide-[#151d2e]">
+      <div className="card grid grid-cols-2 sm:grid-cols-5 divide-x divide-[var(--c-border)]">
         <StatCell label="Headlines" value={total} />
         <StatCell label="Bullish" value={bull} color="c-bull" />
         <StatCell label="Bearish" value={bear} color="c-bear" />
@@ -179,7 +179,7 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
       {/* ── Ticker grid ───────────────────────────── */}
       {d.ticker_sentiments && Object.keys(d.ticker_sentiments).length > 0 && (
         <div className="card p-5">
-          <span className="text-[11px] font-medium text-[#4b5563] uppercase tracking-wide">
+          <span className="text-[11px] font-medium text-[var(--c-muted)] uppercase tracking-wide">
             Ticker Breakdown
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-3">
@@ -188,7 +188,7 @@ export default function Dashboard({ dashboardData, setDashboardData, isAnalyzing
               const c = sc > 0.05 ? '#22c55e' : sc < -0.05 ? '#ef4444' : '#4b5563';
               return (
                 <div key={tk} className="flex items-center justify-between p-2.5 rounded-md bg-[#080c14] border border-[#151d2e]">
-                  <span className="text-[13px] font-semibold text-white">{tk}</span>
+                  <span className="text-[13px] font-semibold text-[var(--c-text)]">{tk}</span>
                   <span className="mono text-[12px] font-semibold" style={{ color: c }}>
                     {sc > 0 ? '+' : ''}{sc.toFixed(2)}
                   </span>
@@ -208,13 +208,13 @@ function Header({ ts, tickers, onAnalyze, disabled }) {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-[18px] font-semibold text-white leading-tight">Dashboard</h1>
-        <p className="text-[12px] text-[#374151] mt-0.5">
+        <h1 className="text-[18px] font-semibold text-[var(--c-text)] leading-tight">Dashboard</h1>
+        <p className="text-[12px] text-[var(--c-dimmer)] mt-0.5">
           {tickers?.length
             ? tickers.join(' · ')
             : 'Sentiment Trading Agent'}
           {ts && (
-            <span className="ml-2 text-[#1e293b]">|</span>
+            <span className="ml-2 text-[var(--c-ghost)]">│</span>
           )}
           {ts && (
             <span className="ml-2">{ts.toLocaleTimeString()}</span>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
@@ -17,28 +18,30 @@ export default function App() {
   };
 
   return (
-    <Router>
-      <div className="min-h-screen bg-[#080c14] flex flex-col">
-        <Navbar />
-        <main className="flex-1 w-full max-w-[1360px] mx-auto px-5 sm:px-8 py-5">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Dashboard
-                  dashboardData={dashboardData}
-                  setDashboardData={setDashboardData}
-                  isAnalyzing={isAnalyzing}
-                  setIsAnalyzing={setIsAnalyzing}
-                  settingsChangedAt={settingsChangedAt}
-                />
-              }
-            />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/settings" element={<Settings onSaved={handleSettingsSaved} />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <div className="min-h-screen bg-[var(--c-bg)] flex flex-col transition-colors">
+          <Navbar />
+          <main className="flex-1 w-full max-w-[1360px] mx-auto px-5 sm:px-8 py-5">
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Dashboard
+                    dashboardData={dashboardData}
+                    setDashboardData={setDashboardData}
+                    isAnalyzing={isAnalyzing}
+                    setIsAnalyzing={setIsAnalyzing}
+                    settingsChangedAt={settingsChangedAt}
+                  />
+                }
+              />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/settings" element={<Settings onSaved={handleSettingsSaved} />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ThemeProvider>
   );
 }

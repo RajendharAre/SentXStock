@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/* ── Theme tokens ─────────────────────────────────── */
+:root {
+  --c-bg:          #080c14;
+  --c-surface:     #0d1320;
+  --c-surface2:    #111827;
+  --c-border:      #151d2e;
+  --c-border2:     #1e3050;
+  --c-text:        #c8d1dc;
+  --c-sub:         #94a3b8;
+  --c-muted:       #64748b;
+  --c-dim:         #4b5563;
+  --c-dimmer:      #374151;
+  --c-placeholder: #2a3344;
+  --c-ghost:       #1e293b;
+}
+
+html.light {
+  --c-bg:          #f8fafc;
+  --c-surface:     #ffffff;
+  --c-surface2:    #f1f5f9;
+  --c-border:      #e2e8f0;
+  --c-border2:     #cbd5e1;
+  --c-text:        #0f172a;
+  --c-sub:         #334155;
+  --c-muted:       #475569;
+  --c-dim:         #64748b;
+  --c-dimmer:      #94a3b8;
+  --c-placeholder: #94a3b8;
+  --c-ghost:       #e2e8f0;
+}
+
+/* ── Base ─────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background: var(--c-bg);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-ghost); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-border2); }
+
+/* ── Mono numbers (trading data) ──────────────────── */
+.mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+
+/* ── Cards ────────────────────────────────────────── */
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.card-hover { transition: border-color 0.2s; }
+.card-hover:hover { border-color: #1e3050; }
+
+/* ── Subtle divider ───────────────────────────────── */
+.divider { border-top: 1px solid #151d2e; }
+
+/* ── Accent dot ───────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #22c55e;
+  animation: blink 2.4s ease-in-out infinite;
+}
+
+/* ── Score colors ─────────────────────────────────── */
+.c-bull { color: #22c55e; }
+.c-bear { color: #ef4444; }
+.c-flat { color: #64748b; }
+.bg-bull { background: rgba(34,197,94,0.08); }
+.bg-bear { background: rgba(239,68,68,0.08); }
+
+/* ── Tag / pill ───────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  padding: 3px 8px; border-radius: 4px;
+}
+.pill-buy  { color: #22c55e; background: rgba(34,197,94,0.1); }
+.pill-sell { color: #ef4444; background: rgba(239,68,68,0.1); }
+.pill-hold { color: #64748b; background: rgba(100,116,139,0.1); }
+
+/* ── Gauge track ──────────────────────────────────── */
+.gauge-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, #ef4444 0%, #64748b 50%, #22c55e 100%);
+  opacity: 0.25; position: relative;
+}
+.gauge-thumb {
+  position: absolute; top: -4px;
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--c-bg);
+  transition: left 0.8s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Skeleton loader ──────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--c-surface2) 25%, var(--c-border) 50%, var(--c-surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+  border-radius: 6px;
+}
+
+/* ── Toast enter ──────────────────────────────────── */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-enter { animation: toast-in 0.25s ease-out; }
+
+/* ── Focus ring ───────────────────────────────────── */
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+
+/* ── Selection ────────────────────────────────────── */
+::selection { background: rgba(59,130,246,0.25); }
