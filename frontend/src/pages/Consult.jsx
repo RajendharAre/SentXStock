@@ -209,7 +209,8 @@ export default function Consult() {
   const canSubmit   = form.name.trim() && form.email.trim() && form.phone.trim() && form.experience;
 
   // ── Derived fee number for payment ──────────────────────────────────────────
-  const feeAmount = selectedExpert?.fee?.replace(/[^0-9,]/g, '').replace(',', '') || '0';
+  // Extract just the numeric amount before the first '/' e.g. "₹2,500 / session (45 min)" → "2,500"
+  const feeAmount = selectedExpert?.fee?.match(/[\d,]+/)?.[0] ?? '0';
 
   // ── Reset everything ─────────────────────────────────────────────────────────
   const resetAll = () => {
