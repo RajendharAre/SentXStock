@@ -26,8 +26,8 @@ import {
 } from '../services/api';
 
 // ── Admin credentials (demo only) ────────────────────────────
-const ADMIN_USER = 'admin_sentxstock';
-const ADMIN_PASS = 'Admin@33*';
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'sentxadmin123';
 
 // ── Theme helpers ─────────────────────────────────────────────
 function applyTheme(mode) {

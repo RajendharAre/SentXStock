@@ -441,6 +441,213 @@ def start_backtest_for_ticker():
     return jsonify({"status": "started"})
 
 
+# ══════════════════════════════════════════════════════════════
+# ─── Admin API  ───────────────────────────────────────────────
+# All /api/admin/* endpoints require a valid admin token in the
+# "Authorization: Bearer <token>" header (except /login).
+# ══════════════════════════════════════════════════════════════
+
+def _require_admin():
+    """Return (None, None) if valid, or (error_dict, http_code)."""
+    from admin.auth import verify_token
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return {"error": "Missing admin token"}, 401
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not verify_token(token):
+        return {"error": "Invalid or expired admin token"}, 401
+    return None, None
+
+
+# ── Auth ───────────────────────────────────────────────────────
+
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    """Validate credentials and return a signed admin token."""
+    from admin.auth import check_credentials, generate_token
+    data     = request.get_json() or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    if not check_credentials(username, password):
+        return jsonify({"error": "Invalid username or password"}), 401
+    return jsonify({"token": generate_token(), "admin": username})
+
+
+@app.route("/api/admin/verify", methods=["GET"])
+def admin_verify():
+    """Check if the caller's token is still valid."""
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+    return jsonify({"valid": True})
+
+
+# ── Dataset management ─────────────────────────────────────────
+
+@app.route("/api/admin/datasets", methods=["GET"])
+def admin_list_datasets():
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+    from admin.dataset_manager import list_datasets
+    return jsonify(list_datasets())
+
+
+@app.route("/api/admin/datasets/upload", methods=["POST"])
+def admin_upload_dataset():
+    """Accept multipart/form-data with file + metadata fields."""
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+
+    from admin.dataset_manager import save_dataset
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in request"}), 400
+
+    f            = request.files["file"]
+    company      = request.form.get("company", "Unknown").strip()
+    period_from  = request.form.get("period_from", "").strip()
+    period_to    = request.form.get("period_to",   "").strip()
+    description  = request.form.get("description", "").strip()
+
+    if not f.filename:
+        return jsonify({"error": "Empty filename"}), 400
+
+    try:
+        meta = save_dataset(
+            file_bytes   = f.read(),
+            filename     = f.filename,
+            company_name = company,
+            period_from  = period_from,
+            period_to    = period_to,
+            description  = description,
+        )
+        return jsonify(meta), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        return jsonify({"error": f"Upload failed: {e}"}), 500
+
+
+@app.route("/api/admin/datasets/<dataset_id>", methods=["GET"])
+def admin_get_dataset(dataset_id: str):
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+    from admin.dataset_manager import get_dataset
+    meta = get_dataset(dataset_id)
+    if not meta:
+        return jsonify({"error": "Dataset not found"}), 404
+    return jsonify(meta)
+
+
+@app.route("/api/admin/datasets/<dataset_id>", methods=["DELETE"])
+def admin_delete_dataset(dataset_id: str):
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+    from admin.dataset_manager import delete_dataset
+    deleted = delete_dataset(dataset_id)
+    return jsonify({"deleted": deleted})
+
+
+# ── Training ───────────────────────────────────────────────────
+
+_train_job_lock = threading.Lock()
+_train_job: dict = {"status": "idle", "progress": "", "error": None, "dataset_id": None}
+
+
+def _run_training_bg(dataset_id: str):
+    global _train_job
+    try:
+        from admin.dataset_manager import load_dataframe, get_dataset, mark_trained
+        from admin.trainer import train_dataset
+
+        with _train_job_lock:
+            _train_job["progress"] = "Loading dataset…"
+
+        meta = get_dataset(dataset_id)
+        df   = load_dataframe(dataset_id)
+
+        with _train_job_lock:
+            _train_job["progress"] = f"Running analysis on {len(df)} rows…"
+
+        result = train_dataset(
+            dataset_id = dataset_id,
+            company    = meta.get("company", "Unknown"),
+            df         = df,
+        )
+        mark_trained(dataset_id, result["result_id"])
+
+        with _train_job_lock:
+            _train_job["status"]     = "complete"
+            _train_job["progress"]   = "Training complete"
+            _train_job["error"]      = None
+            _train_job["result_id"]  = result["result_id"]
+
+    except Exception as e:
+        import traceback
+        with _train_job_lock:
+            _train_job["status"]   = "error"
+            _train_job["progress"] = ""
+            _train_job["error"]    = str(e)
+
+
+@app.route("/api/admin/train/<dataset_id>", methods=["POST"])
+def admin_train_dataset(dataset_id: str):
+    """Start training on a dataset in a background thread."""
+    global _train_job
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+
+    from admin.dataset_manager import get_dataset
+    if not get_dataset(dataset_id):
+        return jsonify({"error": "Dataset not found"}), 404
+
+    with _train_job_lock:
+        if _train_job["status"] == "running":
+            return jsonify({"status": "running", "message": "Another training job is in progress"}), 409
+        _train_job["status"]     = "running"
+        _train_job["progress"]   = "Queued…"
+        _train_job["error"]      = None
+        _train_job["dataset_id"] = dataset_id
+        _train_job.pop("result_id", None)
+
+    t = threading.Thread(target=_run_training_bg, args=(dataset_id,), daemon=True)
+    t.start()
+    return jsonify({"status": "started", "dataset_id": dataset_id})
+
+
+@app.route("/api/admin/train/status", methods=["GET"])
+def admin_train_status():
+    err, code = _require_admin()
+    if err:
+        return jsonify(err), code
+    with _train_job_lock:
+        return jsonify(dict(_train_job))
+
+
+# ── Results (public — user-facing) ────────────────────────────
+
+@app.route("/api/admin/results", methods=["GET"])
+def admin_list_results():
+    """Public endpoint — no auth required. Users see training results."""
+    from admin.trainer import list_results
+    return jsonify(list_results())
+
+
+@app.route("/api/admin/results/<dataset_id>", methods=["GET"])
+def admin_get_result(dataset_id: str):
+    """Public endpoint — returns full training result for a dataset."""
+    from admin.trainer import load_result
+    r = load_result(dataset_id)
+    if not r:
+        return jsonify({"error": "No result found for this dataset"}), 404
+    return jsonify(r)
+
+
 # ─── Run Server ───────────────────────────────────────────────
 
 if __name__ == "__main__":

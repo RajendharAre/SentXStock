@@ -35,3 +35,9 @@ datasets/sentiment/*.csv
 # Backtest cache (parquet) and saved results
 backtest/cache/
 backtest/results/*.json
+
+# Admin: uploaded datasets and training results (keep folder via .gitkeep)
+admin_datasets/*
+!admin_datasets/.gitkeep
+admin_results/*
+!admin_results/.gitkeep
