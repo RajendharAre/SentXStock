@@ -325,36 +325,51 @@ export default function Consult() {
   }
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="space-y-2 pb-16">
 
       {/* ── Header ── */}
-      <div className="pt-2">
-        <SectionLabel>Human Advisory</SectionLabel>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--c-text)] leading-tight">
-          Consult a SEBI-Registered Expert
-        </h1>
-        <p className="mt-3 text-sm text-[var(--c-muted)] max-w-2xl leading-relaxed">
-          Speak directly with a verified human financial advisor — not an AI. Get personalised
-          guidance on portfolio construction, tax-efficient investing, and NSE market strategy
-          from a certified professional.
-        </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+        
+        {/* LEFT: Content */}
+        <div className="pt-0">
+          <SectionLabel>Human Advisory</SectionLabel>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--c-text)] leading-tight">
+            Consult a SEBI-Registered Expert
+          </h1>
+          <p className="mt-2 text-sm text-[var(--c-muted)] leading-relaxed">
+            Speak directly with a verified human financial advisor — not an AI. Get personalised
+            guidance on portfolio construction, tax-efficient investing, and NSE market strategy
+            from a certified professional.
+          </p>
 
-        {/* AI vs Human notice */}
-        <div className="mt-5 flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-600/5 p-4 max-w-2xl">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[13px] font-semibold text-emerald-400">Verified Human Advisors</p>
-            <p className="text-[12px] text-[var(--c-muted)] mt-0.5 leading-relaxed">
-              All advisors on this platform hold valid SEBI Registration certificates.
-              Sessions are conducted over video call or phone. Looking for the AI assistant?
-              Use <strong className="text-[var(--c-sub)]">AI Advisor</strong> in the navigation bar.
-            </p>
+          {/* AI vs Human notice */}
+          <div className="mt-3 flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-600/5 p-3">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[12px] font-semibold text-emerald-400">Verified Human Advisors</p>
+              <p className="text-[11px] text-[var(--c-muted)] mt-0.5 leading-relaxed">
+                All advisors on this platform hold valid SEBI Registration certificates.
+                Sessions are conducted over video call or phone. Looking for the AI assistant?
+                Use <strong className="text-[var(--c-sub)]">AI Advisor</strong> in the navigation bar.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: GIF Animation */}
+        <div className="flex items-center justify-center lg:justify-end">
+          <div className="w-full max-w-sm h-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 overflow-hidden shadow-lg">
+            <img
+              src="/assests/gifs/consult.gif"
+              alt="SentXStock Consultation Service"
+              className="w-full h-auto rounded-lg object-cover"
+            />
           </div>
         </div>
       </div>
 
       {/* ── Step indicator (4 steps) ── */}
-      <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium">
+      <div className="flex flex-wrap items-center gap-2 text-[12px] font-medium pt-2">
         {[
           { n: 1, label: 'Select Advisor' },
           { n: 2, label: 'Session & Time' },
