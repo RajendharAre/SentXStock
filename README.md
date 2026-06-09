@@ -5,7 +5,8 @@
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python">
-    <img src="https://img.shields.io/badge/Streamlit-Frontend-red?logo=streamlit" alt="Streamlit">
+    <img src="https://img.shields.io/badge/React-Frontend-blue?logo=react" alt="React">
+    <img src="https://img.shields.io/badge/Node.js-Backend-green?logo=node.js" alt="Node.js">
     <img src="https://img.shields.io/badge/FinBERT-ML%20Model-green" alt="FinBERT">
     <img src="https://img.shields.io/badge/Gemini-LLM-orange?logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
@@ -42,7 +43,7 @@ SentXStock is an **autonomous sentiment-driven trading agent** that monitors rea
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    STREAMLIT FRONTEND                         │
+│                    REACT FRONTEND (Port 5173)                │
 │  ┌────────────┐ ┌──────────────┐ ┌────────────────────────┐ │
 │  │  Sentiment  │ │   Portfolio   │ │    AI Chatbot          │ │
 │  │   Gauge     │ │   Pie Chart   │ │  "Should I buy TSLA?"  │ │
@@ -51,9 +52,10 @@ SentXStock is an **autonomous sentiment-driven trading agent** that monitors rea
           │               │                    │
           └───────────────┼────────────────────┘
                           │
-                    ┌─────▼─────┐
-                    │  api.py   │  ← Unified API Layer
-                    └─────┬─────┘
+         ┌────────────────┴────────────────┐
+         │   Flask API Layer (Port 5000)   │
+         │  (api.py + server.py)           │
+         └────────────────┬────────────────┘
                           │
           ┌───────────────┼───────────────┐
           ▼               ▼               ▼
@@ -131,11 +133,32 @@ SentXStock/
 │   ├── risk.py               # Risk engine (dynamic risk adjustment)
 │   └── orders.py             # Order drafter (BUY/SELL/HOLD logic)
 │
-├── streamlit_app.py          # Streamlit entry point (run this)
-└── st_pages/                 # Streamlit page modules
-    ├── dashboard.py          # Sentiment dashboard + orders
-    ├── chat.py               # AI chatbot page
-    └── settings.py           # Tickers, portfolio & risk config
+├── server.py                 # Flask API server (run this in Terminal 1)
+├── frontend/                 # React frontend
+│   ├── package.json          # Node.js dependencies
+│   ├── vite.config.js        # Vite configuration
+│   ├── index.html            # HTML entry point
+│   └── src/
+│       ├── main.jsx          # React entry point
+│       ├── App.jsx           # Main app component
+│       ├── components/       # React components
+│       │   ├── Navbar.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── OrderCards.jsx
+│       │   ├── PortfolioChart.jsx
+│       │   ├── SentimentGauge.jsx
+│       │   ├── RiskLevel.jsx
+│       │   └── PDFReport.jsx
+│       ├── pages/            # Page components
+│       │   ├── Dashboard.jsx
+│       │   ├── Chat.jsx
+│       │   ├── Portfolio.jsx
+│       │   ├── Settings.jsx
+│       │   └── Backtest.jsx
+│       ├── services/         # API client
+│       │   └── api.js        # Axios API calls to Flask backend
+│       └── context/          # React Context
+│           └── ThemeContext.jsx
 ```
 
 ---
@@ -145,6 +168,8 @@ SentXStock/
 ### Prerequisites
 
 - Python 3.11+
+- Node.js 18+ (LTS recommended)
+- npm or yarn
 - Git
 - Free API keys (see below)
 
@@ -155,7 +180,7 @@ git clone https://github.com/RajendharAre/SentXStock.git
 cd SentXStock
 ```
 
-### 2. Install Dependencies
+### 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -163,7 +188,15 @@ pip install -r requirements.txt
 
 > **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs.
 
-### 3. Set Up API Keys
+### 3. Install Node.js Dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Set Up API Keys
 
 Copy the example env file and add your keys:
 
@@ -192,7 +225,31 @@ NEWSAPI_KEY=your_newsapi_key
 | **Finnhub** | 60 req/min | [finnhub.io](https://finnhub.io/) |
 | **NewsAPI** | 100 req/day | [newsapi.org](https://newsapi.org/) |
 
-### 4. Run the Agent
+### 5. Run the Backend & Frontend
+
+**Terminal 1 — Start the Flask API backend:**
+
+```bash
+python server.py
+```
+Backend runs on: `http://localhost:5000`
+
+**Terminal 2 — Start the React dev server:**
+
+```bash
+cd frontend
+npm run dev
+```
+Frontend runs on: `http://localhost:5173`
+
+**Open your browser:**
+```
+http://localhost:5173
+```
+
+### 6. Run the Agent (Optional — CLI Mode)
+
+If you want to run analysis from the command line instead of the web UI:
 
 ```bash
 # Real-time mode (uses live news + social data)
@@ -207,53 +264,58 @@ python main.py --tickers AAPL,TSLA,NVDA --output results.json
 
 ---
 
-## 🖥️ Frontend (Streamlit Dashboard)
+## 🖥️ Frontend (React Dashboard)
 
-### Running the Dashboard
+### Accessing the Web UI
 
-```bash
-streamlit run streamlit_app.py
-```
+Once both the backend and frontend are running:
+
+1. **Backend:** `python server.py` → `http://localhost:5000`
+2. **Frontend:** `npm run dev` (from `frontend/` folder) → `http://localhost:5173`
+3. **Open:** `http://localhost:5173` in your browser
+
+The React frontend automatically proxies `/api` calls to the Flask backend.
 
 ### Dashboard Features
 
-| Section | What it Shows |
+| Component | What it Shows |
 |---|---|
-| **Market Sentiment Gauge** | Overall sentiment score (-1.0 to +1.0) with Bullish/Neutral/Bearish indicator |
-| **Risk Level Display** | Current risk: High / Medium / Low with dynamic adjustment |
-| **Order Recommendations** | BUY / SELL / HOLD cards with AI reasoning |
-| **Portfolio Pie Chart** | Equity / Bonds / Cash allocation breakdown |
+| **SentimentGauge.jsx** | Overall sentiment score (-1.0 to +1.0) with Bullish/Neutral/Bearish indicator |
+| **RiskLevel.jsx** | Current risk: High / Medium / Low with dynamic adjustment |
+| **OrderCards.jsx** | BUY / SELL / HOLD cards with AI reasoning |
+| **PortfolioChart.jsx** | Equity / Bonds / Cash allocation breakdown |
 | **News Feed** | Headlines color-coded: 🟢 Bullish, 🔴 Bearish, ⚪ Neutral |
-| **AI Chatbot** | Ask trading questions, get data-backed answers |
-| **User Settings** | Custom tickers, investment amount, risk preference |
+| **Chat.jsx** | Ask trading questions, get data-backed answers |
+| **Settings.jsx** | Custom tickers, investment amount, risk preference |
+| **PDFReport.jsx** | Generate PDF reports with trading insights |
 
 ### Frontend API Usage
 
-The Streamlit frontend uses `api.py` — the unified API layer:
+The React frontend communicates with the Flask backend via REST API calls in [frontend/src/services/api.js](frontend/src/services/api.js):
 
-```python
-from api import TradingAPI
+```javascript
+import { api } from './api';
 
-api = TradingAPI()
+// ── User Setup ──
+await api.setUserTickers(["AAPL", "TSLA", "NVDA"]);
+await api.setUserPortfolio(50000, "Moderate");
 
-# ── User Setup ──
-api.set_user_tickers(["AAPL", "TSLA", "NVDA"])
-api.set_user_portfolio(cash=50000, risk="Moderate")
+// ── Run Analysis ──
+const result = await api.runAnalysis();           // Real-time
+const result = await api.runAnalysis(true);      // Mock data
 
-# ── Run Analysis ──
-result = api.run_analysis()            # Real-time
-result = api.run_analysis(use_mock=True)  # Mock data
+// ── AI Chatbot ──
+const response = await api.chat("Should I buy Tesla?");
+console.log(response.answer);
 
-# ── AI Chatbot ──
-response = api.chat("Should I buy Tesla?")
-print(response["answer"])
+// ── Ticker Deep Dive ──
+const tickerData = await api.analyzeTicker("AAPL");
 
-# ── Ticker Deep Dive ──
-ticker_data = api.analyze_ticker("AAPL")
-
-# ── Dashboard Data (everything in one call) ──
-dashboard = api.get_dashboard_data()
+// ── Dashboard Data ──
+const dashboard = await api.getDashboardData();
 ```
+
+The backend `server.py` handles all these endpoints and uses `api.py` for the trading logic.
 
 ---
 
@@ -301,7 +363,8 @@ dashboard = api.get_dashboard_data()
 
 | Component | Technology |
 |---|---|
-| **Language** | Python 3.11+ |
+| **Backend Language** | Python 3.11+ |
+| **Backend Server** | Flask + Flask-CORS |
 | **ML Model** | FinBERT (ProsusAI/finbert) — financial sentiment BERT |
 | **LLM** | Google Gemini 2.0-flash |
 | **NLP Fallback** | VADER Sentiment |
@@ -309,7 +372,12 @@ dashboard = api.get_dashboard_data()
 | **News APIs** | Finnhub, NewsAPI |
 | **Social Data** | Reddit JSON API |
 | **Stock Prices** | Yahoo Finance (yfinance) |
-| **Frontend** | Streamlit |
+| **Frontend Framework** | React 19 + Vite |
+| **Frontend Styling** | Tailwind CSS |
+| **Frontend Build** | Vite (lightning-fast dev server) |
+| **HTTP Client** | Axios |
+| **Charts** | Recharts |
+| **PDF Export** | jsPDF + html2canvas |
 | **Deep Learning** | PyTorch + HuggingFace Transformers |
 
 ---
