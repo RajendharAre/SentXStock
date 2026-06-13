@@ -5,7 +5,7 @@
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python">
-    <img src="https://img.shields.io/badge/Streamlit-Frontend-red?logo=streamlit" alt="Streamlit">
+    <img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-blue?logo=react" alt="React+Vite">
     <img src="https://img.shields.io/badge/FinBERT-ML%20Model-green" alt="FinBERT">
     <img src="https://img.shields.io/badge/Gemini-LLM-orange?logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
@@ -42,21 +42,21 @@ SentXStock is an **autonomous sentiment-driven trading agent** that monitors rea
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    STREAMLIT FRONTEND                         │
+│                    React + Vite Frontend                      │
 │  ┌────────────┐ ┌──────────────┐ ┌────────────────────────┐ │
 │  │  Sentiment  │ │   Portfolio   │ │    AI Chatbot          │ │
 │  │   Gauge     │ │   Pie Chart   │ │  "Should I buy TSLA?"  │ │
 │  └──────┬──────┘ └──────┬───────┘ └──────────┬─────────────┘ │
 └─────────┼───────────────┼────────────────────┼───────────────┘
-          │               │                    │
-          └───────────────┼────────────────────┘
-                          │
-                    ┌─────▼─────┐
-                    │  api.py   │  ← Unified API Layer
-                    └─────┬─────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
+      │               │                    │
+      └───────────────┼────────────────────┘
+          │
+        ┌─────▼─────┐
+        │  server.py│  ← Flask API Layer
+        └─────┬─────┘
+          │
+      ┌───────────────┼───────────────┐
+      ▼               ▼               ▼
    ┌─────────────┐ ┌───────────┐ ┌──────────────┐
    │  Data Layer  │ │ Sentiment │ │  Portfolio    │
    │  (Fetchers)  │ │ (3-Tier)  │ │  (Risk+Orders)│
@@ -101,10 +101,11 @@ News/Social Posts (100+ items)
 
 ```
 SentXStock/
-├── api.py                    # Unified API for Streamlit frontend
+├── server.py                 # Flask API server (frontend backend bridge)
 ├── main.py                   # CLI entry point
 ├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment variables template
+├── frontend/                 # React + Vite frontend (see frontend/README)
 │
 ├── agent/                    # Core agent logic
 │   ├── agent.py              # Trading agent orchestrator (5-step pipeline)
@@ -130,12 +131,6 @@ SentXStock/
 │   ├── portfolio.py          # Portfolio manager (holdings, live prices)
 │   ├── risk.py               # Risk engine (dynamic risk adjustment)
 │   └── orders.py             # Order drafter (BUY/SELL/HOLD logic)
-│
-├── streamlit_app.py          # Streamlit entry point (run this)
-└── st_pages/                 # Streamlit page modules
-    ├── dashboard.py          # Sentiment dashboard + orders
-    ├── chat.py               # AI chatbot page
-    └── settings.py           # Tickers, portfolio & risk config
 ```
 
 ---
@@ -161,7 +156,7 @@ cd SentXStock
 pip install -r requirements.txt
 ```
 
-> **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs.
+> **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs. Consider pre-downloading the model in CI or developer machines to avoid long cold starts.
 
 ### 3. Set Up API Keys
 
@@ -192,7 +187,21 @@ NEWSAPI_KEY=your_newsapi_key
 | **Finnhub** | 60 req/min | [finnhub.io](https://finnhub.io/) |
 | **NewsAPI** | 100 req/day | [newsapi.org](https://newsapi.org/) |
 
-### 4. Run the Agent
+### 4. Run the backend API (development)
+
+Start the Flask API server which the React frontend calls:
+
+```bash
+# create and activate a virtualenv (optional but recommended)
+python -m venv .venv
+source .venv/Scripts/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# Run server (default: http://localhost:5000)
+python server.py
+```
+
+### 5. Run the Agent (CLI)
 
 ```bash
 # Real-time mode (uses live news + social data)
@@ -207,25 +216,30 @@ python main.py --tickers AAPL,TSLA,NVDA --output results.json
 
 ---
 
-## 🖥️ Frontend (Streamlit Dashboard)
+## 🖥️ Frontend (React + Vite)
 
-### Running the Dashboard
+This repository uses a React + Vite frontend located in the `frontend/` folder. The React app talks to the Python backend (`server.py`) via the HTTP API.
+
+### Running the frontend (development)
+
+1. Start the backend API server (see Backend section below).
+2. In a separate terminal:
 
 ```bash
-streamlit run streamlit_app.py
+cd frontend
+npm install
+npm run dev
 ```
 
-### Dashboard Features
+The Vite dev server runs on `http://localhost:5173` by default. During development the frontend calls the Flask API at `http://localhost:5000` (CORS is enabled in `server.py`).
 
-| Section | What it Shows |
-|---|---|
-| **Market Sentiment Gauge** | Overall sentiment score (-1.0 to +1.0) with Bullish/Neutral/Bearish indicator |
-| **Risk Level Display** | Current risk: High / Medium / Low with dynamic adjustment |
-| **Order Recommendations** | BUY / SELL / HOLD cards with AI reasoning |
-| **Portfolio Pie Chart** | Equity / Bonds / Cash allocation breakdown |
-| **News Feed** | Headlines color-coded: 🟢 Bullish, 🔴 Bearish, ⚪ Neutral |
-| **AI Chatbot** | Ask trading questions, get data-backed answers |
-| **User Settings** | Custom tickers, investment amount, risk preference |
+### Production build
+
+```bash
+cd frontend
+npm run build
+# Serve `dist/` with your preferred static host or integrate with the backend
+```
 
 ### Frontend API Usage
 

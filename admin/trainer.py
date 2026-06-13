@@ -11,6 +11,7 @@ Pipeline:
 """
 
 import json
+import math
 import uuid
 import traceback
 from datetime import datetime
@@ -21,6 +22,18 @@ import pandas as pd
 
 RESULTS_DIR = Path(__file__).parent.parent / "admin_results"
 RESULTS_DIR.mkdir(exist_ok=True)
+
+
+def _sanitize(obj):
+    """Recursively replace float NaN / Inf with None so json.dump produces valid JSON."""
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    return obj
+
 
 # ─── Column-type heuristics ───────────────────────────────────────────────────
 
@@ -219,10 +232,10 @@ def train_dataset(dataset_id: str, company: str, df: pd.DataFrame) -> dict:
         "errors":            errors,
     }
 
-    # Save result JSON
+    # Save result JSON — sanitize first so NaN/Inf never appear in output
     out = RESULTS_DIR / f"{dataset_id}.json"
     with open(out, "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(_sanitize(result), f, indent=2)
 
     return result
 

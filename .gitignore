@@ -1,3 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.*
+
+# VSCode
+.vscode/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# OS
+.DS_Store
+
+# Data, outputs, models
+/results/
+/output*.json
+/admin_results/
+/admin_datasets/
+datasets/prices/
+backtest/cache/
+data/*.db
+
+# HuggingFace / torch cache
+/.cache/huggingface/
+~/.cache/huggingface/
 # Environment variables (contains API keys)
 .env
 

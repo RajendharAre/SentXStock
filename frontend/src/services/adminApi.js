@@ -49,10 +49,7 @@ export async function adminLogin(username, password) {
 }
 
 export async function adminVerify() {
-  const token = getToken();
-  console.log('[adminVerify] token in localStorage:', token ? token.substring(0, 20) + '...' : 'NONE');
   const res = await fetch(`${BASE}/verify`, { headers: authHeaders() });
-  console.log('[adminVerify] response status:', res.status);
   return res.ok;
 }
 
@@ -63,25 +60,15 @@ export function adminLogout() {
 // ── Datasets ─────────────────────────────────────────────────────────────────
 
 export async function fetchDatasets() {
-  console.log('[fetchDatasets] calling GET /api/admin/datasets');
-  console.log('[fetchDatasets] token:', getToken() ? getToken().substring(0, 20) + '...' : 'NONE');
   const res = await _checkAuth(
     await fetch(`${BASE}/datasets`, { headers: authHeaders() })
   );
-  console.log('[fetchDatasets] response status:', res.status);
   if (!res.ok) throw new Error("Failed to fetch datasets");
-  const data = await res.json();
-  console.log('[fetchDatasets] datasets received:', data.length, data);
-  return data;
+  return res.json();
 }
 
 export async function uploadDataset(formData) {
-  if (!hasToken()) { console.error('[uploadDataset] No token — redirecting to login'); _handle401(); return; }
-  console.log('[uploadDataset] token:', getToken().substring(0, 20) + '...');
-  console.log('[uploadDataset] FormData entries:');
-  for (const [k, v] of formData.entries()) {
-    console.log(`  ${k}:`, v instanceof File ? `File(${v.name}, ${v.size}b)` : v);
-  }
+  if (!hasToken()) { _handle401(); return; }
   const res = await _checkAuth(
     await fetch(`${BASE}/datasets/upload`, {
       method: "POST",
@@ -89,9 +76,7 @@ export async function uploadDataset(formData) {
       body: formData,
     })
   );
-  console.log('[uploadDataset] response status:', res.status);
   const data = await res.json();
-  console.log('[uploadDataset] response body:', data);
   if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
   return data;
 }
