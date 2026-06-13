@@ -641,11 +641,11 @@ def admin_list_results():
 @app.route("/api/admin/results/<dataset_id>", methods=["GET"])
 def admin_get_result(dataset_id: str):
     """Public endpoint — returns full training result for a dataset."""
-    from admin.trainer import load_result
+    from admin.trainer import load_result, _sanitize
     r = load_result(dataset_id)
     if not r:
         return jsonify({"error": "No result found for this dataset"}), 404
-    return jsonify(r)
+    return jsonify(_sanitize(r))
 
 
 # ─── Run Server ───────────────────────────────────────────────
