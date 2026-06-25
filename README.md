@@ -5,8 +5,6 @@
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python">
-    <img src="https://img.shields.io/badge/React-Frontend-blue?logo=react" alt="React">
-    <img src="https://img.shields.io/badge/Node.js-Backend-green?logo=node.js" alt="Node.js">
     <img src="https://img.shields.io/badge/FinBERT-ML%20Model-green" alt="FinBERT">
     <img src="https://img.shields.io/badge/Gemini-LLM-orange?logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
@@ -43,22 +41,12 @@ SentXStock is an **autonomous sentiment-driven trading agent** that monitors rea
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    REACT FRONTEND (Port 5173)                │
 │  ┌────────────┐ ┌──────────────┐ ┌────────────────────────┐ │
 │  │  Sentiment  │ │   Portfolio   │ │    AI Chatbot          │ │
 │  │   Gauge     │ │   Pie Chart   │ │  "Should I buy TSLA?"  │ │
 │  └──────┬──────┘ └──────┬───────┘ └──────────┬─────────────┘ │
 └─────────┼───────────────┼────────────────────┼───────────────┘
-          │               │                    │
-          └───────────────┼────────────────────┘
-                          │
-         ┌────────────────┴────────────────┐
-         │   Flask API Layer (Port 5000)   │
-         │  (api.py + server.py)           │
-         └────────────────┬────────────────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
+
    ┌─────────────┐ ┌───────────┐ ┌──────────────┐
    │  Data Layer  │ │ Sentiment │ │  Portfolio    │
    │  (Fetchers)  │ │ (3-Tier)  │ │  (Risk+Orders)│
@@ -103,10 +91,11 @@ News/Social Posts (100+ items)
 
 ```
 SentXStock/
-├── api.py                    # Unified API for Streamlit frontend
+├── server.py                 # Flask API server (frontend backend bridge)
 ├── main.py                   # CLI entry point
 ├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment variables template
+├── frontend/                 # React + Vite frontend (see frontend/README)
 │
 ├── agent/                    # Core agent logic
 │   ├── agent.py              # Trading agent orchestrator (5-step pipeline)
@@ -132,33 +121,6 @@ SentXStock/
 │   ├── portfolio.py          # Portfolio manager (holdings, live prices)
 │   ├── risk.py               # Risk engine (dynamic risk adjustment)
 │   └── orders.py             # Order drafter (BUY/SELL/HOLD logic)
-│
-├── server.py                 # Flask API server (run this in Terminal 1)
-├── frontend/                 # React frontend
-│   ├── package.json          # Node.js dependencies
-│   ├── vite.config.js        # Vite configuration
-│   ├── index.html            # HTML entry point
-│   └── src/
-│       ├── main.jsx          # React entry point
-│       ├── App.jsx           # Main app component
-│       ├── components/       # React components
-│       │   ├── Navbar.jsx
-│       │   ├── Dashboard.jsx
-│       │   ├── OrderCards.jsx
-│       │   ├── PortfolioChart.jsx
-│       │   ├── SentimentGauge.jsx
-│       │   ├── RiskLevel.jsx
-│       │   └── PDFReport.jsx
-│       ├── pages/            # Page components
-│       │   ├── Dashboard.jsx
-│       │   ├── Chat.jsx
-│       │   ├── Portfolio.jsx
-│       │   ├── Settings.jsx
-│       │   └── Backtest.jsx
-│       ├── services/         # API client
-│       │   └── api.js        # Axios API calls to Flask backend
-│       └── context/          # React Context
-│           └── ThemeContext.jsx
 ```
 
 ---
@@ -186,7 +148,7 @@ cd SentXStock
 pip install -r requirements.txt
 ```
 
-> **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs.
+> **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs. Consider pre-downloading the model in CI or developer machines to avoid long cold starts.
 
 ### 3. Install Node.js Dependencies
 
@@ -225,32 +187,6 @@ NEWSAPI_KEY=your_newsapi_key
 | **Finnhub** | 60 req/min | [finnhub.io](https://finnhub.io/) |
 | **NewsAPI** | 100 req/day | [newsapi.org](https://newsapi.org/) |
 
-### 5. Run the Backend & Frontend
-
-**Terminal 1 — Start the Flask API backend:**
-
-```bash
-python server.py
-```
-Backend runs on: `http://localhost:5000`
-
-**Terminal 2 — Start the React dev server:**
-
-```bash
-cd frontend
-npm run dev
-```
-Frontend runs on: `http://localhost:5173`
-
-**Open your browser:**
-```
-http://localhost:5173
-```
-
-### 6. Run the Agent (Optional — CLI Mode)
-
-If you want to run analysis from the command line instead of the web UI:
-
 ```bash
 # Real-time mode (uses live news + social data)
 python main.py --output results.json
@@ -264,30 +200,9 @@ python main.py --tickers AAPL,TSLA,NVDA --output results.json
 
 ---
 
-## 🖥️ Frontend (React Dashboard)
 
-### Accessing the Web UI
+The Vite dev server runs on `http://localhost:5173` by default. During development the frontend calls the Flask API at `http://localhost:5000` (CORS is enabled in `server.py`).
 
-Once both the backend and frontend are running:
-
-1. **Backend:** `python server.py` → `http://localhost:5000`
-2. **Frontend:** `npm run dev` (from `frontend/` folder) → `http://localhost:5173`
-3. **Open:** `http://localhost:5173` in your browser
-
-The React frontend automatically proxies `/api` calls to the Flask backend.
-
-### Dashboard Features
-
-| Component | What it Shows |
-|---|---|
-| **SentimentGauge.jsx** | Overall sentiment score (-1.0 to +1.0) with Bullish/Neutral/Bearish indicator |
-| **RiskLevel.jsx** | Current risk: High / Medium / Low with dynamic adjustment |
-| **OrderCards.jsx** | BUY / SELL / HOLD cards with AI reasoning |
-| **PortfolioChart.jsx** | Equity / Bonds / Cash allocation breakdown |
-| **News Feed** | Headlines color-coded: 🟢 Bullish, 🔴 Bearish, ⚪ Neutral |
-| **Chat.jsx** | Ask trading questions, get data-backed answers |
-| **Settings.jsx** | Custom tickers, investment amount, risk preference |
-| **PDFReport.jsx** | Generate PDF reports with trading insights |
 
 ### Frontend API Usage
 
