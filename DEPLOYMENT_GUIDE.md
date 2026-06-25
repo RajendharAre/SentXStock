@@ -214,8 +214,6 @@ https://sentxstock-api.onrender.com/api/sentiment
 Edit: `frontend/src/services/api.js`
 
 ```javascript
-// ❌ BEFORE
-const API_URL = 'http://localhost:5000';
 
 // ✅ AFTER
 const API_URL = process.env.VITE_API_URL || 'https://sentxstock-api.onrender.com';
