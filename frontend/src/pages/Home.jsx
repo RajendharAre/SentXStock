@@ -352,14 +352,12 @@ export default function Home() {
           </div>
 
           {/* RIGHT: GIF Animation */}
-          <div className="flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-sm h-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-4 overflow-hidden shadow-lg">
-              <img
-                src="/assests/gifs/sentiment.gif"
-                alt="SentXStock Trading Animation"
-                className="w-full h-auto rounded-lg object-cover"
-              />
-            </div>
+          <div className="flex items-start justify-center lg:justify-end lg:pt-0">
+            <img
+              src="/assests/gifs/sentiment.gif"
+              alt="SentXStock Trading Animation"
+              className="w-full max-w-md h-auto object-contain"
+            />
           </div>
 
         </div>

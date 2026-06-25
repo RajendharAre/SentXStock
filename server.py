@@ -10,7 +10,12 @@ from api import TradingAPI
 import threading
 
 app = Flask(__name__)
-CORS(app)  # Allow React dev server (localhost:5173) to call this
+from flask_cors import CORS
+
+CORS(app, origins=[
+    "https://sentxstock.vercel.app", 
+    "http://localhost:5173"
+]) 
 
 # Singleton API instance (persists across requests)
 trading_api = TradingAPI()

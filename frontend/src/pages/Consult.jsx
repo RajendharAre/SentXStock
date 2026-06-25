@@ -358,13 +358,11 @@ export default function Consult() {
 
         {/* RIGHT: GIF Animation */}
         <div className="flex items-center justify-center lg:justify-end">
-          <div className="w-full max-w-sm h-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface)] p-3 overflow-hidden shadow-lg">
-            <img
-              src="/assests/gifs/consult.gif"
-              alt="SentXStock Consultation Service"
-              className="w-full h-auto rounded-lg object-cover"
-            />
-          </div>
+          <img
+            src="/assests/gifs/consult.gif"
+            alt="SentXStock Consultation Service"
+            className="w-full max-w-xs h-auto object-contain"
+          />
         </div>
       </div>
 
