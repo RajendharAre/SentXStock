@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-06-09 22:38:05",
+  "overall_sentiment": "Neutral",
+  "sentiment_score": -0.12,
+  "risk_adjustment": "Maintain Medium risk \u2014 sentiment supports current allocation",
+  "new_risk_level": "Medium",
+  "portfolio_action": "Maintain balanced allocation with selective adjustments",
+  "orders": [
+    {
+      "action": "SELL",
+      "asset": "AAPL",
+      "reason": "Risk trim on AAPL \u2014 strong negative sentiment (score: -0.67)"
+    },
+    {
+      "action": "BUY",
+      "asset": "GOOGL",
+      "reason": "Opportunistic buy on GOOGL \u2014 strong positive sentiment (score: 0.92)"
+    },
+    {
+      "action": "SELL",
+      "asset": "TLT",
+      "reason": "Risk trim on TLT \u2014 strong negative sentiment (score: -0.93)"
+    },
+    {
+      "action": "BUY",
+      "asset": "META",
+      "reason": "Opportunistic buy on META \u2014 strong positive sentiment (score: 0.76)"
+    }
+  ],
+  "analysis_details": {
+    "total_items_analyzed": 69,
+    "bullish_count": 8,
+    "bearish_count": 20,
+    "neutral_count": 41,
+    "rebalance_actions": [
+      "Decrease equity by 3.3%",
+      "Increase bonds by 25.7%",
+      "Decrease cash by 22.4%"
+    ]
+  },
+  "portfolio_snapshot": {
+    "total_value": 117970.9,
+    "cash": 50000.0,
+    "equity_pct": 53.29,
+    "bonds_pct": 4.32,
+    "cash_pct": 42.38,
+    "risk_level": "Medium"
+  }
+}

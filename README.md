@@ -5,7 +5,6 @@
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python">
-    <img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-blue?logo=react" alt="React+Vite">
     <img src="https://img.shields.io/badge/FinBERT-ML%20Model-green" alt="FinBERT">
     <img src="https://img.shields.io/badge/Gemini-LLM-orange?logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
@@ -42,21 +41,12 @@ SentXStock is an **autonomous sentiment-driven trading agent** that monitors rea
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    React + Vite Frontend                      │
 │  ┌────────────┐ ┌──────────────┐ ┌────────────────────────┐ │
 │  │  Sentiment  │ │   Portfolio   │ │    AI Chatbot          │ │
 │  │   Gauge     │ │   Pie Chart   │ │  "Should I buy TSLA?"  │ │
 │  └──────┬──────┘ └──────┬───────┘ └──────────┬─────────────┘ │
 └─────────┼───────────────┼────────────────────┼───────────────┘
-      │               │                    │
-      └───────────────┼────────────────────┘
-          │
-        ┌─────▼─────┐
-        │  server.py│  ← Flask API Layer
-        └─────┬─────┘
-          │
-      ┌───────────────┼───────────────┐
-      ▼               ▼               ▼
+
    ┌─────────────┐ ┌───────────┐ ┌──────────────┐
    │  Data Layer  │ │ Sentiment │ │  Portfolio    │
    │  (Fetchers)  │ │ (3-Tier)  │ │  (Risk+Orders)│
@@ -140,6 +130,8 @@ SentXStock/
 ### Prerequisites
 
 - Python 3.11+
+- Node.js 18+ (LTS recommended)
+- npm or yarn
 - Git
 - Free API keys (see below)
 
@@ -150,7 +142,7 @@ git clone https://github.com/RajendharAre/SentXStock.git
 cd SentXStock
 ```
 
-### 2. Install Dependencies
+### 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -158,7 +150,15 @@ pip install -r requirements.txt
 
 > **Note:** First run will download FinBERT model (~438MB). This is cached locally and loads instantly on subsequent runs. Consider pre-downloading the model in CI or developer machines to avoid long cold starts.
 
-### 3. Set Up API Keys
+### 3. Install Node.js Dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Set Up API Keys
 
 Copy the example env file and add your keys:
 
@@ -187,22 +187,6 @@ NEWSAPI_KEY=your_newsapi_key
 | **Finnhub** | 60 req/min | [finnhub.io](https://finnhub.io/) |
 | **NewsAPI** | 100 req/day | [newsapi.org](https://newsapi.org/) |
 
-### 4. Run the backend API (development)
-
-Start the Flask API server which the React frontend calls:
-
-```bash
-# create and activate a virtualenv (optional but recommended)
-python -m venv .venv
-source .venv/Scripts/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-# Run server (default: http://localhost:5000)
-python server.py
-```
-
-### 5. Run the Agent (CLI)
-
 ```bash
 # Real-time mode (uses live news + social data)
 python main.py --output results.json
@@ -216,58 +200,37 @@ python main.py --tickers AAPL,TSLA,NVDA --output results.json
 
 ---
 
-## 🖥️ Frontend (React + Vite)
-
-This repository uses a React + Vite frontend located in the `frontend/` folder. The React app talks to the Python backend (`server.py`) via the HTTP API.
-
-### Running the frontend (development)
-
-1. Start the backend API server (see Backend section below).
-2. In a separate terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
 
 The Vite dev server runs on `http://localhost:5173` by default. During development the frontend calls the Flask API at `http://localhost:5000` (CORS is enabled in `server.py`).
 
-### Production build
-
-```bash
-cd frontend
-npm run build
-# Serve `dist/` with your preferred static host or integrate with the backend
-```
 
 ### Frontend API Usage
 
-The Streamlit frontend uses `api.py` — the unified API layer:
+The React frontend communicates with the Flask backend via REST API calls in [frontend/src/services/api.js](frontend/src/services/api.js):
 
-```python
-from api import TradingAPI
+```javascript
+import { api } from './api';
 
-api = TradingAPI()
+// ── User Setup ──
+await api.setUserTickers(["AAPL", "TSLA", "NVDA"]);
+await api.setUserPortfolio(50000, "Moderate");
 
-# ── User Setup ──
-api.set_user_tickers(["AAPL", "TSLA", "NVDA"])
-api.set_user_portfolio(cash=50000, risk="Moderate")
+// ── Run Analysis ──
+const result = await api.runAnalysis();           // Real-time
+const result = await api.runAnalysis(true);      // Mock data
 
-# ── Run Analysis ──
-result = api.run_analysis()            # Real-time
-result = api.run_analysis(use_mock=True)  # Mock data
+// ── AI Chatbot ──
+const response = await api.chat("Should I buy Tesla?");
+console.log(response.answer);
 
-# ── AI Chatbot ──
-response = api.chat("Should I buy Tesla?")
-print(response["answer"])
+// ── Ticker Deep Dive ──
+const tickerData = await api.analyzeTicker("AAPL");
 
-# ── Ticker Deep Dive ──
-ticker_data = api.analyze_ticker("AAPL")
-
-# ── Dashboard Data (everything in one call) ──
-dashboard = api.get_dashboard_data()
+// ── Dashboard Data ──
+const dashboard = await api.getDashboardData();
 ```
+
+The backend `server.py` handles all these endpoints and uses `api.py` for the trading logic.
 
 ---
 
@@ -315,7 +278,8 @@ dashboard = api.get_dashboard_data()
 
 | Component | Technology |
 |---|---|
-| **Language** | Python 3.11+ |
+| **Backend Language** | Python 3.11+ |
+| **Backend Server** | Flask + Flask-CORS |
 | **ML Model** | FinBERT (ProsusAI/finbert) — financial sentiment BERT |
 | **LLM** | Google Gemini 2.0-flash |
 | **NLP Fallback** | VADER Sentiment |
@@ -323,7 +287,12 @@ dashboard = api.get_dashboard_data()
 | **News APIs** | Finnhub, NewsAPI |
 | **Social Data** | Reddit JSON API |
 | **Stock Prices** | Yahoo Finance (yfinance) |
-| **Frontend** | Streamlit |
+| **Frontend Framework** | React 19 + Vite |
+| **Frontend Styling** | Tailwind CSS |
+| **Frontend Build** | Vite (lightning-fast dev server) |
+| **HTTP Client** | Axios |
+| **Charts** | Recharts |
+| **PDF Export** | jsPDF + html2canvas |
 | **Deep Learning** | PyTorch + HuggingFace Transformers |
 
 ---
