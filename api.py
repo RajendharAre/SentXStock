@@ -20,7 +20,7 @@ from config.config import DEFAULT_TICKERS, RISK_ALLOCATIONS
 
 class TradingAPI:
     """
-    Unified API for the Streamlit frontend.
+    Unified API for the frontend.
     Manages state between auto-updates and user interactions.
     """
 

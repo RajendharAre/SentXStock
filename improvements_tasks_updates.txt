@@ -1,0 +1,58 @@
+Bro, noted. Main issues I see:
+
+1. **Encoding is broken in many files** ---- DONE
+   - README/code comments show text like `—`, emoji glyphs, or box-drawing characters incorrectly when encoding is misread.
+   - This makes docs and comments look unprofessional.
+
+2. **CI is too shallow** - Fixed
+   - Added lightweight Python CI dependencies in `requirements-ci.txt`.
+   - Added tests for sentiment scoring, risk/portfolio/order logic, API routes, backtest strategy behavior, and admin dataset helpers.
+   - CI now installs test dependencies and runs the full `tests/` discovery suite plus the frontend build.
+
+3. **Too many broad `except Exception` blocks**
+   - Many modules silently ignore failures or only print errors.
+   - This can hide real bugs, especially in sentiment, backtest, data fetching, and admin training.
+
+4. **Hardcoded dates in social sentiment**
+   - [data/realtime_social.py](d:/NAAC/StockMarket/data/realtime_social.py) uses fixed dates like `2026-02-20` to `2026-02-28`.
+   - This will become stale and return poor/no data later.
+
+5. **India/NSE and US/SPY logic are mixed**
+   - Default tickers are Indian NSE stocks, but many modules/docs still reference `SPY`, S&P 500, US tickers, and dollar portfolio logic.
+   - This can create confusing or incorrect behavior.
+
+6. **Admin module prints on import**
+   - [admin/__init__.py](d:/NAAC/StockMarket/admin/__init__.py) contains `print('hi')`.
+   - That should be removed.
+
+7. **Security concern in admin auth**
+   - If `ADMIN_SECRET` is missing, token signing still runs with an empty secret.
+   - Admin auth should fail loudly if credentials or secret are not configured.
+
+8. **Backend uses in-memory singleton state**
+   - `trading_api`, job status, backtest job, and training job are all stored in memory.
+   - This is okay for local demo, but bad for production or multi-user usage.
+
+9. **Generated/cache folders seem present in repo**
+   - `backtest/cache`, `backtest/results`, `__pycache__`, `frontend/node_modules`, `.venv` exist locally.
+   - Need to ensure `.gitignore` keeps these out of git.
+
+10. **Frontend API formatting issue**
+   - [frontend/src/services/api.js](d:/NAAC/StockMarket/frontend/src/services/api.js) has multiple exports on one line near backtest API calls.
+   - Not fatal, but messy and easier to break.
+
+11. **Docs mismatch**
+   - Some comments reference a legacy frontend name even though the frontend is React.
+   - Some backtest docs still describe S&P 500 defaults while implementation uses India universe/Nifty.
+
+12. **Live data dependency is fragile**
+   - App depends on Finnhub, NewsAPI, NewsData, Reddit, Yahoo Finance, Gemini, FinBERT downloads.
+   - Many failure paths fall back to mock data, which is good for demo but can mislead users if not clearly shown.
+
+13. **No real API route tests**
+   - Flask endpoints are not tested with a test client.
+   - Bugs in `/api/analyze`, `/api/backtest`, `/api/admin`, etc. could pass CI.
+
+14. **Uncommitted/dirty worktree**
+   - Current repo has many modified/untracked files including CI, tests, docs, package files, requirements, and frontend pages.
+   - Before serious work, this should be reviewed and committed carefully.

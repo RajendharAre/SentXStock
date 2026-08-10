@@ -35,9 +35,25 @@ Example `.env` (frontend):
 VITE_API_URL=http://localhost:5000
 ```
 
-Adding concurrency helper (optional)
+Repo-level helper scripts
 
-To run backend and frontend together during development you can use `concurrently` in the repo root, or add a top-level `Makefile` with a `dev` target that launches both processes in separate terminals.
+Use the repo root helpers if you want consistent commands across terminals:
+
+```bash
+# Git Bash / macOS / Linux
+./build.sh help
+./build.sh setup
+./build.sh backend
+./build.sh frontend-dev
+```
+
+```powershell
+# Windows PowerShell
+.\build.ps1 help
+.\build.ps1 setup
+.\build.ps1 backend
+.\build.ps1 frontend-dev
+```
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

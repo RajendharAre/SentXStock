@@ -5,11 +5,7 @@
  *  1. Appearance   — Dark / Light / System theme switcher
  *  2. Portfolio    — Starting capital (INR), risk preference
  *  3. Data         — Mock mode toggle, live re-analysis trigger
- *  4. Admin        — Gated behind credentials; CSV upload + company list
- *
- * Admin credentials (demo only — no real security implied):
- *   Username: admin_sentxstock
- *   Password: Admin@33*
+ *  4. Admin        — Backend-backed login for CSV upload + company list
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -24,10 +20,7 @@ import {
 import {
   getSettings, setPortfolio, runAnalysis, getAllCompanies,
 } from '../services/api';
-
-// ── Admin credentials (demo only) ────────────────────────────
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'sentxadmin123';
+import { adminLogin, adminLogout, hasToken } from '../services/adminApi';
 
 // ── Theme helpers ─────────────────────────────────────────────
 function applyTheme(mode) {
@@ -301,7 +294,7 @@ export default function SettingsPage({ onSaved }) {
   const [adminUser, setAdminUser]       = useState('');
   const [adminPass, setAdminPass]       = useState('');
   const [showPass, setShowPass]         = useState(false);
-  const [adminAuth, setAdminAuth]       = useState(() => sessionStorage.getItem('_adm') === '1');
+  const [adminAuth, setAdminAuth]       = useState(() => hasToken());
   const [loginErr, setLoginErr]         = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   // Toast
@@ -365,20 +358,20 @@ export default function SettingsPage({ onSaved }) {
   const handleAdminLogin = async () => {
     setLoginLoading(true);
     setLoginErr('');
-    await new Promise(r => setTimeout(r, 700));
-    if (adminUser === ADMIN_USER && adminPass === ADMIN_PASS) {
-      sessionStorage.setItem('_adm', '1');
+    try {
+      await adminLogin(adminUser.trim(), adminPass);
       setAdminAuth(true);
       setAdminUser('');
       setAdminPass('');
-    } else {
-      setLoginErr('Invalid credentials. Access denied.');
+    } catch (e) {
+      setLoginErr(e.message || 'Invalid credentials. Access denied.');
+    } finally {
+      setLoginLoading(false);
     }
-    setLoginLoading(false);
   };
 
   const handleAdminLogout = () => {
-    sessionStorage.removeItem('_adm');
+    adminLogout();
     setAdminAuth(false);
   };
 
@@ -450,9 +443,9 @@ export default function SettingsPage({ onSaved }) {
               className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-[var(--c-bg)] border border-[var(--c-border)] text-[13px] text-[var(--c-text)] mono placeholder-[var(--c-placeholder)] focus:outline-none focus:border-[#2563eb]/50 transition-colors"
             />
           </div>
-          <p className="text-[10px] text-[var(--c-dimmer)]">
-            Default ₹50,000 · Maximum single position capped at 20% of total capital
-          </p>
+              <p className="text-[11px] text-[var(--c-dimmer)]">
+                This section now uses the same backend-backed admin login as the /admin panel.
+              </p>
         </div>
 
         <div className="space-y-1.5">
@@ -625,7 +618,7 @@ export default function SettingsPage({ onSaved }) {
               <div className="space-y-5">
                 <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5">
                   <p className="text-[11px] text-[var(--c-dim)]">
-                    Signed in as&nbsp;<span className="mono font-semibold text-rose-400">{ADMIN_USER}</span>
+                    Signed in via backend admin token
                   </p>
                   <button
                     onClick={handleAdminLogout}

@@ -263,7 +263,7 @@ frontend/src/
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   STREAMLIT FRONTEND                │
+│                     REACT FRONTEND                  │
 │            (Portfolio Dashboard + Orders)            │
 │              [Your friend handles this]              │
 └──────────────────────┬──────────────────────────────┘
@@ -457,7 +457,7 @@ StockMarket/
 │   ├── __init__.py
 │   ├── agent.py
 │   └── rules.py
-├── app.py              ← Streamlit entry point (frontend team)
+├── app.py              ← Frontend entry point (frontend team)
 └── main.py             ← Backend CLI entry point (us)
 ```
 
@@ -473,7 +473,7 @@ StockMarket/
 | **4** | 1.5 hr | Agent Orchestrator + Rules | `agent/agent.py`, `rules.py` |
 | **5** | 1 hr | `main.py` CLI + JSON output + testing | `main.py` |
 | **6** | 0.5 hr | BeautifulSoup scraper (bonus) | `data/scraper.py` |
-| **7** | — | Hand off to frontend team | `app.py` (Streamlit) |
+| **7** | — | Hand off to frontend team | `app.py` (frontend) |
 
 **Total backend time: ~8 hours** (leaves 4 hours for frontend + integration + demo)
 
@@ -485,7 +485,6 @@ StockMarket/
 beautifulsoup4
 requests
 google-generativeai   # or openai — whichever LLM we use
-streamlit
 python-dotenv
 ```
 

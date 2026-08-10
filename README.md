@@ -177,6 +177,11 @@ FINNHUB_API_KEY=your_finnhub_key
 
 # NewsAPI (80,000+ news sources)
 NEWSAPI_KEY=your_newsapi_key
+
+# Admin authentication for /api/admin/* and the admin portal
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_admin_password
+ADMIN_SECRET=your_admin_secret
 ```
 
 #### Where to Get Free API Keys
@@ -187,6 +192,29 @@ NEWSAPI_KEY=your_newsapi_key
 | **Finnhub** | 60 req/min | [finnhub.io](https://finnhub.io/) |
 | **NewsAPI** | 100 req/day | [newsapi.org](https://newsapi.org/) |
 
+### 4. Run the backend API (development)
+
+Start the Flask API server that the React frontend calls.
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python server.py
+```
+
+Git Bash / macOS / Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python server.py
+```
+
+### 5. Run the Agent (CLI)
 ```bash
 # Real-time mode (uses live news + social data)
 python main.py --output results.json
@@ -197,6 +225,20 @@ python main.py --mock --output results.json
 # Custom tickers
 python main.py --tickers AAPL,TSLA,NVDA --output results.json
 ```
+
+### 6. Run Smoke Tests
+
+The core smoke suite checks the env template, frontend build wiring, and repo helper scripts without needing live API calls.
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+### 7. Continuous Integration
+
+GitHub Actions runs the same smoke suite plus a production frontend build on every push and pull request.
+
+Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 ---
 
@@ -230,7 +272,17 @@ const tickerData = await api.analyzeTicker("AAPL");
 const dashboard = await api.getDashboardData();
 ```
 
-The backend `server.py` handles all these endpoints and uses `api.py` for the trading logic.
+The backend `server.py` handles all these endpoints and uses `api.py` for the trading logic. The frontend UI that consumes this API lives in the `frontend/` folder and runs with Vite.
+
+### Frontend quick start
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default, the Vite dev server proxies `/api` requests to `http://localhost:5000`.
 
 ---
 
@@ -355,7 +407,7 @@ This project is built for the **NAAC Hackathon 2026**.
 ## 👥 Team
 
 - **Backend & AI Pipeline** — Sentiment analysis, portfolio engine, API layer
-- **Frontend** — Streamlit dashboard, visualizations, user interface
+- **Frontend** — React dashboard, visualizations, user interface
 
 ---
 

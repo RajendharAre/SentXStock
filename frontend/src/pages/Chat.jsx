@@ -206,7 +206,9 @@ export default function Chat() {
           ]);
           setMsgs(rebuilt);
         }
-      } catch {}
+      } catch (error) {
+        console.warn('[Chat] Failed to load history:', error);
+      }
     })();
   }, []);
 
@@ -242,7 +244,9 @@ export default function Chat() {
   }, [input, busy]);
 
   const nuke = async () => {
-    try { await clearChat(); } catch {}
+    await clearChat().catch((error) => {
+      console.warn('[Chat] Failed to clear history:', error);
+    });
     setMsgs([]);
     setError(null);
   };
