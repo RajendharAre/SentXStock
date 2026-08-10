@@ -1,0 +1,49 @@
+---
+references:
+  - "File: /api.py"
+  - "File: /build.ps1"
+  - "File: /build.sh"
+  - "File: /frontend/src/components/PDFReport.jsx"
+  - "File: /frontend/src/pages/Backtest.jsx"
+  - "File: /frontend/src/pages/Chat.jsx"
+  - "File: /frontend/src/pages/Settings.jsx"
+  - "File: /tests/__init__.py"
+  - "File: /tests/test_admin_dataset.py"
+  - "File: /tests/test_api_routes.py"
+  - "File: /tests/test_backtest_strategy.py"
+  - "File: /tests/test_smoke.py"
+  - "File: /tests/test_trading_logic.py"
+generationTime: 2026-08-10T05:55:55.201Z
+---
+flowchart TD
+    A["Project entry points"] --> B{"Trigger type?"}
+
+    B -->|Frontend UI| C["React screens: Settings, Backtest, Chat, PDFReport"]
+    C --> C1["UI actions: save portfolio, run backtest, send chat, export PDF"]
+    C1 --> D["TradingAPI in api.py"]
+
+    B -->|Backend API| D
+    B -->|Build task| E["build.ps1 / build.sh"]
+    B -->|Tests| F["Unit and smoke tests"]
+
+    D --> D1{"Method?"}
+    D1 -->|Setup| D2["Validate tickers, cash, and risk preference"]
+    D1 -->|Analysis| D3["Create TradingAgent and PortfolioManager"]
+    D1 -->|Ticker detail| D4["analyze_ticker(): fetch news, sentiment, price"]
+    D1 -->|Cache / chat / dashboard| D6["Return cached result, history, or allocations"]
+
+    D4 --> D5{"News found?"}
+    D5 -->|Yes| D7["Deduplicate headlines, score sentiment, build recommendation"]
+    D5 -->|No| D8["Load mock news fallback"]
+    D7 --> D6
+    D8 --> D6
+    D3 --> D6
+
+    E --> E1{"Task?"}
+    E1 -->|help / setup| E2["Print commands or install dependencies"]
+    E1 -->|backend / frontend-dev| E3["Run server.py or Vite dev server"]
+    E1 -->|build / lint / preview / clean| E4["Build, lint, preview, or remove dist"]
+
+    F --> F1{"Dependencies available?"}
+    F1 -->|No| F2["Skip missing-dependency tests"]
+    F1 -->|Yes| F3["Verify routes, parsing, strategy, portfolio, and smoke checks"]
