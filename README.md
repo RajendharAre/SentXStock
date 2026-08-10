@@ -177,6 +177,11 @@ FINNHUB_API_KEY=your_finnhub_key
 
 # NewsAPI (80,000+ news sources)
 NEWSAPI_KEY=your_newsapi_key
+
+# Admin authentication for /api/admin/* and the admin portal
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_admin_password
+ADMIN_SECRET=your_admin_secret
 ```
 
 #### Where to Get Free API Keys
@@ -189,15 +194,23 @@ NEWSAPI_KEY=your_newsapi_key
 
 ### 4. Run the backend API (development)
 
-Start the Flask API server which the React frontend calls:
+Start the Flask API server that the React frontend calls.
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python server.py
+```
+
+Git Bash / macOS / Linux:
 
 ```bash
-# create and activate a virtualenv (optional but recommended)
 python -m venv .venv
-source .venv/Scripts/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# Run server (default: http://localhost:5000)
 python server.py
 ```
 
@@ -213,6 +226,20 @@ python main.py --mock --output results.json
 # Custom tickers
 python main.py --tickers AAPL,TSLA,NVDA --output results.json
 ```
+
+### 6. Run Smoke Tests
+
+The core smoke suite checks the env template, frontend build wiring, and repo helper scripts without needing live API calls.
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+### 7. Continuous Integration
+
+GitHub Actions runs the same smoke suite plus a production frontend build on every push and pull request.
+
+Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 ---
 
@@ -243,7 +270,7 @@ npm run build
 
 ### Frontend API Usage
 
-The Streamlit frontend uses `api.py` — the unified API layer:
+The React frontend uses `api.py` — the unified API layer:
 
 ```python
 from api import TradingAPI
@@ -268,6 +295,18 @@ ticker_data = api.analyze_ticker("AAPL")
 # ── Dashboard Data (everything in one call) ──
 dashboard = api.get_dashboard_data()
 ```
+
+The frontend UI that consumes this API lives in the `frontend/` folder and runs with Vite.
+
+### Frontend quick start
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default, the Vite dev server proxies `/api` requests to `http://localhost:5000`.
 
 ---
 
@@ -323,7 +362,7 @@ dashboard = api.get_dashboard_data()
 | **News APIs** | Finnhub, NewsAPI |
 | **Social Data** | Reddit JSON API |
 | **Stock Prices** | Yahoo Finance (yfinance) |
-| **Frontend** | Streamlit |
+| **Frontend** | React + Vite |
 | **Deep Learning** | PyTorch + HuggingFace Transformers |
 
 ---
@@ -386,7 +425,7 @@ This project is built for the **NAAC Hackathon 2026**.
 ## 👥 Team
 
 - **Backend & AI Pipeline** — Sentiment analysis, portfolio engine, API layer
-- **Frontend** — Streamlit dashboard, visualizations, user interface
+- **Frontend** — React dashboard, visualizations, user interface
 
 ---
 

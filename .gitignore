@@ -62,6 +62,7 @@ Thumbs.db
 
 # Test scripts
 test_*.py
+!tests/test_*.py
 
 # Datasets — track folder structure but not large CSV files
 datasets/prices/*.csv

@@ -283,7 +283,7 @@ Production (Recommended):
 | **Multi-key rotation for Gemini** | Free tier has low quotas. Rotating across keys gives ~3x the free capacity. |
 | **Parquet cache for backtest prices** | Avoids repeated API calls for the same historical data. Parquet is 10x smaller than CSV. |
 | **Flask with threading** | Analysis jobs take 5–30s. Background threads let the UI poll for progress without blocking. |
-| **React SPA over Streamlit** | Streamlit was the prototype. React gives full UI control, routing, animations, PDF export. |
+| **React SPA** | React gives full UI control, routing, animations, PDF export. |
 | **Template chatbot fallback** | When Gemini quota is exhausted, 10+ pattern rules still give data-rich, useful responses. |
 | **Per-ticker analysis cache** | Dashboard results stored in-memory in Flask session so Chatbot can answer ticker questions instantly. |
 

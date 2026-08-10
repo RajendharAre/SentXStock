@@ -255,7 +255,7 @@ export default function Backtest() {
       const { data } = await loadBacktestResult(runId);
       setResult(data);
       setStatus('complete');
-    } catch (e) {
+    } catch {
       setError('Could not load run: ' + runId);
     }
   };

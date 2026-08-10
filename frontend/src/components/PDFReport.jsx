@@ -335,8 +335,6 @@ export function DownloadReportButton({ company, data, btResult }) {
       // A4 dimensions in mm: 210 x 297
       const A4_W_MM = 210;
       const A4_H_MM = 297;
-      const PX_PER_MM = 3.7795; // at 96 dpi approx
-
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
@@ -344,8 +342,6 @@ export function DownloadReportButton({ company, data, btResult }) {
         logging: false,
         width: 794,
       });
-
-      const imgData = canvas.toDataURL('image/png');
       const imgW    = A4_W_MM;
       const imgH    = (canvas.height / canvas.width) * imgW;
 

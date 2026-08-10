@@ -19,7 +19,6 @@
 | `README.md` | Project overview, environment setup steps, and usage guide for new developers. |
 | `requirements.txt` | Python package list: Flask, transformers, yfinance, google-genai, torch, etc. |
 | `server.py` | Flask REST API server — exposes all endpoints consumed by the React frontend. |
-| `streamlit_app.py` | Legacy Streamlit UI entry point; superseded by the React + Flask frontend. |
 | `test_api.py` | Dev script to smoke-test Flask API endpoints and verify correct JSON responses. |
 | `test_gemini.py` | Dev script to check Gemini API key validity, quota, and model availability. |
 | `test_mock.json` | Sample mock payload used in API tests to simulate backend analysis output. |
@@ -118,9 +117,9 @@
 
 | File | Description |
 |------|-------------|
-| `chat.py` | Legacy Streamlit chat page — replaced by `frontend/src/pages/Chat.jsx`. |
-| `dashboard.py` | Legacy Streamlit dashboard — replaced by `frontend/src/pages/Dashboard.jsx`. |
-| `settings.py` | Legacy Streamlit settings page — replaced by `frontend/src/pages/Settings.jsx`. |
+| `chat.py` | Legacy chat page — replaced by `frontend/src/pages/Chat.jsx`. |
+| `dashboard.py` | Legacy dashboard — replaced by `frontend/src/pages/Dashboard.jsx`. |
+| `settings.py` | Legacy settings page — replaced by `frontend/src/pages/Settings.jsx`. |
 | `__init__.py` | Package init for the `st_pages` module. |
 
 ---
